@@ -1,0 +1,11 @@
+import { NavigatorScreenParams } from '@react-navigation/native';
+
+export type TRootStack = {
+  SplashScreen: undefined;
+  TabNavigator: NavigatorScreenParams<TBottomTabStack>;
+};
+
+export type TBottomTabStack = {
+  HomeScreen: undefined;
+  AttendanceHistory: undefined;
+};
