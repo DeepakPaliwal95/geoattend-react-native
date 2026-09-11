@@ -1,11 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native';
 import React from 'react';
 import { ThemeColors } from '../../utils/theme.utils';
+import { MainHeader } from '../../components';
 
 export default function HomeScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>HomeScreen</Text>
+      <MainHeader />
     </View>
   );
 }
@@ -14,10 +15,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: ThemeColors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    color: ThemeColors.textPrimary,
   },
 });
