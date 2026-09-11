@@ -10,6 +10,7 @@ import {
 import { SafeAreaWrapper } from '../../components';
 import {
   Ionicons,
+  MaterialDesignIcons,
   IconNames,
   fontSize,
   fontFamily,
@@ -19,18 +20,28 @@ import { wp, hp } from '../../utils/responsive.utils';
 import { usePermission } from '../../hooks/usePermission';
 
 export default function PermissionScreen() {
-  const { permissionState, isChecking, requestPermission, openSettings } =
-    usePermission();
+  const {
+    permissionState,
+    isChecking,
+    requestPermission,
+    checkPermission,
+    openSettings,
+  } = usePermission();
+
+  const isBlocked = permissionState === 'blocked';
+  const isUnavailable = permissionState === 'unavailable';
+  const isDisabled = isBlocked || isUnavailable;
 
   const handlePrimaryPress = async () => {
-    if (permissionState === 'blocked') {
+    if (isDisabled) {
       await openSettings();
     } else {
-      const nextState = await requestPermission();
-      if (nextState === 'blocked') {
-        await openSettings();
-      }
+      await requestPermission();
     }
+  };
+
+  const handleTryAgain = async () => {
+    await checkPermission();
   };
 
   const handleNotNowPress = () => {
@@ -51,27 +62,62 @@ export default function PermissionScreen() {
     );
   }
 
-  const isBlocked = permissionState === 'blocked';
-  const isUnavailable = permissionState === 'unavailable';
+  // --- UI when Location Permission / Services are Disabled (Blocked or Unavailable) ---
+  if (isDisabled) {
+    return (
+      <SafeAreaWrapper>
+        <View style={styles.screen}>
+          <View style={styles.contentContainer}>
+            {/* Satellite Icon with Red X Badge */}
+            <View style={styles.satelliteCircleWrapper}>
+              <View style={styles.satelliteCircle}>
+                <MaterialDesignIcons
+                  name={IconNames.satelliteVariant}
+                  size={fontSize.f36 * 1.8}
+                  color={ThemeColors.satelliteIcon}
+                />
+              </View>
+              <View style={styles.disabledBadge}>
+                <MaterialDesignIcons
+                  name={IconNames.closeThick}
+                  size={fontSize.f15}
+                  color={ThemeColors.white}
+                />
+              </View>
+            </View>
 
-  const title = isBlocked
-    ? 'Location Access Required'
-    : isUnavailable
-    ? 'Location Unavailable'
-    : 'Allow Location Access';
+            {/* Heading and Subtitle */}
+            <Text style={styles.disabledTitle}>Location Services Disabled</Text>
+            <Text style={styles.disabledSubtitle}>
+              Please enable Location Services (GPS) to use GeoAttend. This is
+              required to track your location and mark attendance.
+            </Text>
+          </View>
 
-  const subtitle = isBlocked
-    ? 'Location permission has been disabled for GeoAttend. Please enable Location permission from your device Settings.'
-    : isUnavailable
-    ? 'Location services are not available on this device. Please check your device settings.'
-    : 'We need your location to show your position on the map and enable attendance check-in.';
+          {/* Bottom Actions */}
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              activeOpacity={0.8}
+              onPress={handlePrimaryPress}
+            >
+              <Text style={styles.primaryButtonText}>Open Settings</Text>
+            </TouchableOpacity>
 
-  const primaryButtonText = isBlocked
-    ? 'Open Settings'
-    : isUnavailable
-    ? 'Open Settings'
-    : 'Allow Location';
+            <TouchableOpacity
+              style={styles.tryAgainButton}
+              activeOpacity={0.8}
+              onPress={handleTryAgain}
+            >
+              <Text style={styles.tryAgainButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaWrapper>
+    );
+  }
 
+  // --- UI for Initial / Requestable Location Access ---
   return (
     <SafeAreaWrapper>
       <View style={styles.screen}>
@@ -94,8 +140,11 @@ export default function PermissionScreen() {
           </View>
 
           {/* Heading and Subtitle */}
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <Text style={styles.title}>Allow Location Access</Text>
+          <Text style={styles.subtitle}>
+            We need your location to show your position on the map and enable
+            attendance check-in.
+          </Text>
 
           {/* Feature List Card */}
           <View style={styles.featureCard}>
@@ -107,7 +156,9 @@ export default function PermissionScreen() {
                   color={ThemeColors.primary}
                 />
               </View>
-              <Text style={styles.featureText}>Show your location on map</Text>
+              <Text style={styles.featureText}>
+                Show your location on map
+              </Text>
             </View>
 
             <View style={styles.featureDivider} />
@@ -135,7 +186,9 @@ export default function PermissionScreen() {
                   color={ThemeColors.primary}
                 />
               </View>
-              <Text style={styles.featureText}>Mark your attendance</Text>
+              <Text style={styles.featureText}>
+                Mark your attendance
+              </Text>
             </View>
           </View>
         </View>
@@ -147,7 +200,7 @@ export default function PermissionScreen() {
             activeOpacity={0.8}
             onPress={handlePrimaryPress}
           >
-            <Text style={styles.primaryButtonText}>{primaryButtonText}</Text>
+            <Text style={styles.primaryButtonText}>Allow Location</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -185,6 +238,35 @@ const styles = StyleSheet.create({
   },
   illustrationWrapper: {
     marginBottom: hp('3%'),
+    alignItems: 'center',
+  },
+  satelliteCircleWrapper: {
+    width: wp('38%'),
+    height: wp('38%'),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: hp('3.5%'),
+    position: 'relative',
+  },
+  satelliteCircle: {
+    width: '100%',
+    height: '100%',
+    borderRadius: wp('19%'),
+    backgroundColor: ThemeColors.iconContainerBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  disabledBadge: {
+    position: 'absolute',
+    bottom: hp('0.5%'),
+    right: wp('1.5%'),
+    width: wp('10.5%'),
+    height: wp('10.5%'),
+    borderRadius: wp('5.25%'),
+    backgroundColor: ThemeColors.danger,
+    borderWidth: 3.5,
+    borderColor: ThemeColors.white,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   phoneFrame: {
@@ -239,6 +321,23 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: wp('4%'),
     marginBottom: hp('3.5%'),
+  },
+  disabledTitle: {
+    fontSize: fontSize.f24,
+    fontFamily: fontFamily.bold,
+    color: ThemeColors.textPrimary,
+    textAlign: 'center',
+    marginBottom: hp('1.5%'),
+    maxWidth: wp('70%'),
+  },
+  disabledSubtitle: {
+    fontSize: fontSize.f14,
+    fontFamily: fontFamily.regular,
+    color: ThemeColors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: wp('4%'),
+    marginBottom: hp('3%'),
   },
   featureCard: {
     width: '100%',
@@ -302,5 +401,20 @@ const styles = StyleSheet.create({
     color: ThemeColors.secondary,
     fontSize: fontSize.f14,
     fontFamily: fontFamily.medium,
+  },
+  tryAgainButton: {
+    width: '100%',
+    height: hp('6%'),
+    minHeight: 48,
+    backgroundColor: ThemeColors.iconContainerBackground,
+    borderRadius: wp('3%'),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: hp('1.5%'),
+  },
+  tryAgainButtonText: {
+    color: ThemeColors.primary,
+    fontSize: fontSize.f16,
+    fontFamily: fontFamily.semiBold,
   },
 });

@@ -20,6 +20,7 @@ export const ThemeColors = {
   cardBackground: '#FFFFFF',
   iconContainerBackground: '#EFF6FF',
   disabled: '#94A3B8',
+  satelliteIcon: '#475569',
 
   // Utility colors
   white: '#FFFFFF',

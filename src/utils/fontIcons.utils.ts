@@ -71,6 +71,9 @@ export const IconNames = {
   settings: 'settings-outline',
   alertCircle: 'alert-circle-outline',
   closeCircle: 'close-circle-outline',
+  satelliteVariant: 'satellite-variant',
+  closeThick: 'close-thick',
+  close: 'close',
 } as const;
 
 export { Ionicons, MaterialDesignIcons, fontSize, fontFamily, typography };
