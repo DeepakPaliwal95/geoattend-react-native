@@ -1,22 +1,20 @@
-import { Image, StyleSheet } from 'react-native';
-import React, { useEffect } from 'react';
+import { View, Image, StyleSheet } from 'react-native';
+import React from 'react';
 import { IMAGES } from '../../assets';
 import { hp, wp } from '../../utils/responsive.utils';
-import { navigateAndSimpleReset } from '../../utils/navigation.utils';
 
 export default function SplashScreen() {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigateAndSimpleReset('TabNavigator');
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  return <Image source={IMAGES.splash} style={styles.logo} />;
+  return (
+    <View style={styles.container}>
+      <Image source={IMAGES.splash} style={styles.logo} resizeMode="cover" />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   logo: {
     width: wp('100%'),
     height: hp('100%'),

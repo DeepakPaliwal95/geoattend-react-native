@@ -33,4 +33,45 @@ const fontFamily = {
   extraBold: 'Inter-ExtraBold',
 };
 
-export { Ionicons, MaterialDesignIcons, fontSize, fontFamily };
+const typography = {
+  headline1: {
+    fontSize: fontSize.f24,
+    fontFamily: fontFamily.bold,
+    lineHeight: 32,
+  },
+  headline2: {
+    fontSize: fontSize.f20,
+    fontFamily: fontFamily.semiBold,
+    lineHeight: 28,
+  },
+  title: {
+    fontSize: fontSize.f16,
+    fontFamily: fontFamily.semiBold,
+    lineHeight: 24,
+  },
+  body: {
+    fontSize: fontSize.f14,
+    fontFamily: fontFamily.regular,
+    lineHeight: 20,
+  },
+  caption: {
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.regular,
+    lineHeight: 16,
+  },
+};
+
+export const IconNames = {
+  location: 'location-outline',
+  locationFilled: 'location',
+  office: 'business-outline',
+  checkSquare: 'checkbox-outline',
+  checkmarkCircle: 'checkmark-circle-outline',
+  phonePortrait: 'phone-portrait-outline',
+  settings: 'settings-outline',
+  alertCircle: 'alert-circle-outline',
+  closeCircle: 'close-circle-outline',
+} as const;
+
+export { Ionicons, MaterialDesignIcons, fontSize, fontFamily, typography };
+

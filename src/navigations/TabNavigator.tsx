@@ -5,7 +5,6 @@ import AttendanceHistory from '../screens/tab/AttendanceHistory';
 import { TBottomTabStack } from '../types/navigation.type';
 import { SafeAreaWrapper } from '../components';
 import {
-  Ionicons,
   MaterialDesignIcons,
   fontFamily,
   fontSize,
@@ -13,6 +12,38 @@ import {
 import { ThemeColors } from '../utils/theme.utils';
 
 const Tab = createBottomTabNavigator<TBottomTabStack>();
+
+const renderHomeIcon = ({
+  focused,
+  color,
+  size,
+}: {
+  focused: boolean;
+  color: string;
+  size: number;
+}) => (
+  <MaterialDesignIcons
+    name={focused ? 'home' : 'home-outline'}
+    size={size}
+    color={color}
+  />
+);
+
+const renderHistoryIcon = ({
+  focused,
+  color,
+  size,
+}: {
+  focused: boolean;
+  color: string;
+  size: number;
+}) => (
+  <MaterialDesignIcons
+    name={focused ? 'receipt-text-clock' : 'receipt-text-clock-outline'}
+    size={size}
+    color={color}
+  />
+);
 
 export default function TabNavigator() {
   return (
@@ -39,13 +70,7 @@ export default function TabNavigator() {
           component={HomeScreen}
           options={{
             tabBarLabel: 'Home',
-            tabBarIcon: ({ focused, color, size }) => (
-              <MaterialDesignIcons
-                name={focused ? 'home' : 'home-outline'}
-                size={size}
-                color={color}
-              />
-            ),
+            tabBarIcon: renderHomeIcon,
           }}
         />
         <Tab.Screen
@@ -53,15 +78,7 @@ export default function TabNavigator() {
           component={AttendanceHistory}
           options={{
             tabBarLabel: 'History',
-            tabBarIcon: ({ focused, color, size }) => (
-              <MaterialDesignIcons
-                name={
-                  focused ? 'receipt-text-clock' : 'receipt-text-clock-outline'
-                }
-                size={size}
-                color={color}
-              />
-            ),
+            tabBarIcon: renderHistoryIcon,
           }}
         />
       </Tab.Navigator>

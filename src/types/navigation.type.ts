@@ -2,6 +2,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 
 export type TRootStack = {
   SplashScreen: undefined;
+  PermissionScreen: undefined;
   TabNavigator: NavigatorScreenParams<TBottomTabStack>;
 };
 

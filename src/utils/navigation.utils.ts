@@ -1,7 +1,6 @@
 import {
   CommonActions,
   createNavigationContainerRef,
-  DrawerActions,
 } from '@react-navigation/native';
 import { TRootStack } from '../types/navigation.type';
 
@@ -16,7 +15,7 @@ export function navigate<T extends keyof TRootStack>(
   params?: TRootStack[T],
 ) {
   if (navigationRef.isReady()) {
-    navigationRef.navigate(name, params);
+    (navigationRef.navigate as any)(name, params);
   }
 }
 
