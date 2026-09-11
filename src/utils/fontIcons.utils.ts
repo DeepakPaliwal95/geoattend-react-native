@@ -74,6 +74,9 @@ export const IconNames = {
   satelliteVariant: 'satellite-variant',
   closeThick: 'close-thick',
   close: 'close',
+  refresh: 'refresh',
+  compass: 'compass',
+  timeOutline: 'time-outline',
 } as const;
 
 export { Ionicons, MaterialDesignIcons, fontSize, fontFamily, typography };

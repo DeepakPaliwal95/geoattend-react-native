@@ -3,6 +3,22 @@ jest.mock('react-native-permissions', () =>
   require('react-native-permissions/mock'),
 );
 
+jest.mock('react-native-geolocation-service', () => ({
+  getCurrentPosition: jest.fn(),
+  watchPosition: jest.fn(),
+  clearWatch: jest.fn(),
+  stopObserving: jest.fn(),
+  requestAuthorization: jest.fn(),
+  PositionError: {
+    PERMISSION_DENIED: 1,
+    POSITION_UNAVAILABLE: 2,
+    TIMEOUT: 3,
+    PLAY_SERVICE_NOT_AVAILABLE: 4,
+    SETTINGS_NOT_SATISFIED: 5,
+    INTERNAL_ERROR: -1,
+  },
+}));
+
 jest.mock('@react-native-vector-icons/ionicons', () => 'Ionicons');
 jest.mock('@react-native-vector-icons/material-design-icons', () => 'MaterialDesignIcons');
 
