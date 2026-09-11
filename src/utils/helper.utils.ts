@@ -65,3 +65,82 @@ export const getErrorMessage = (error: LocationError | null): string => {
       return 'An error occurred while tracking location. Please tap retry.';
   }
 };
+
+/**
+ * Formats distance in meters into human-readable string (e.g., '248 m').
+ */
+export const formatDistance = (
+  meters: number | null | undefined,
+): string => {
+  if (meters === null || meters === undefined || Number.isNaN(meters)) {
+    return '-- m';
+  }
+  return `${Math.round(meters)} m`;
+};
+
+/**
+ * Formats a Date object into 'hh:mm A' (e.g., '09:24 AM').
+ */
+export const formatCheckInTime = (date: Date = new Date()): string => {
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const strHours = hours < 10 ? `0${hours}` : `${hours}`;
+  const strMinutes = minutes < 10 ? `0${minutes}` : `${minutes}`;
+  return `${strHours}:${strMinutes} ${ampm}`;
+};
+
+/**
+ * Formats a YYYY-MM-DD date string into 'Today, 15 Oct 2024' or 'DayOfWeek, DD Mon YYYY'.
+ */
+export const formatDateHeader = (dateStr: string): string => {
+  if (!dateStr) {
+    return '';
+  }
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const targetDate = new Date(year, month - 1, day);
+
+  const today = new Date();
+  const isToday =
+    today.getFullYear() === year &&
+    today.getMonth() === month - 1 &&
+    today.getDate() === day;
+
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const isYesterday =
+    yesterday.getFullYear() === year &&
+    yesterday.getMonth() === month - 1 &&
+    yesterday.getDate() === day;
+
+  const monthNames = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const dayOfWeek = dayNames[targetDate.getDay()];
+  const formattedDay = day;
+  const formattedMonth = monthNames[month - 1];
+
+  if (isToday) {
+    return `Today, ${formattedDay} ${formattedMonth} ${year}`;
+  }
+  if (isYesterday) {
+    return `Yesterday, ${formattedDay} ${formattedMonth} ${year}`;
+  }
+
+  return `${dayOfWeek}, ${formattedDay} ${formattedMonth} ${year}`;
+};

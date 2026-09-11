@@ -77,6 +77,10 @@ export const IconNames = {
   refresh: 'refresh',
   compass: 'compass',
   timeOutline: 'time-outline',
+  checkmarkCircleFilled: 'checkmark-circle',
+  alertCircleFilled: 'alert-circle',
+  chevronBack: 'chevron-back',
+  calendarOutline: 'calendar-outline',
 } as const;
 
 export { Ionicons, MaterialDesignIcons, fontSize, fontFamily, typography };

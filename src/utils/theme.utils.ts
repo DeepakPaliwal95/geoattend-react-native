@@ -22,6 +22,23 @@ export const ThemeColors = {
   disabled: '#94A3B8',
   satelliteIcon: '#475569',
 
+  // Alert & Badge tokens
+  outsideAlertBackground: '#FEE2E2',
+  outsideAlertBorder: '#FECACA',
+  outsideAlertText: '#991B1B',
+  insideAlertBackground: '#ECFDF5',
+  insideAlertBorder: '#A7F3D0',
+  insideAlertText: '#065F46',
+  buttonDisabled: '#CBD5E1',
+  buttonDisabledText: '#94A3B8',
+
+  // Geofence Map tokens
+  geofenceInsideStroke: '#10B981',
+  geofenceInsideFill: 'rgba(16, 185, 129, 0.15)',
+  geofenceOutsideStroke: '#3B82F6',
+  geofenceOutsideFill: 'rgba(59, 130, 246, 0.12)',
+  userMarkerRing: 'rgba(37, 99, 235, 0.2)',
+
   // Utility colors
   white: '#FFFFFF',
   black: '#000000',
@@ -32,6 +49,8 @@ export const ThemeColors = {
   grayS2: '#E5E5E5',
   grayS3: '#F9F9FB',
   green: '#10B981',
+  greenS1: '#ECFDF5',
+  greenS2: '#DCFCE7',
   lightOrange: '#FFA432',
   transparent: 'transparent',
 };

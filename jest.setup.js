@@ -48,4 +48,51 @@ const { Keyboard } = require('react-native');
 Keyboard.addListener = jest.fn(() => ({ remove: jest.fn() }));
 Keyboard.removeListener = jest.fn();
 
+jest.mock('@react-native-async-storage/async-storage', () => {
+  let store = {};
+  return {
+    __esModule: true,
+    default: {
+      setItem: jest.fn((key, value) => {
+        store[key] = value;
+        return Promise.resolve(null);
+      }),
+      getItem: jest.fn(key => {
+        return Promise.resolve(store[key] || null);
+      }),
+      removeItem: jest.fn(key => {
+        delete store[key];
+        return Promise.resolve(null);
+      }),
+      clear: jest.fn(() => {
+        store = {};
+        return Promise.resolve(null);
+      }),
+      getAllKeys: jest.fn(() => {
+        return Promise.resolve(Object.keys(store));
+      }),
+    },
+  };
+});
+
+jest.mock('react-native-maps', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockMapView = React.forwardRef((props, ref) => (
+    <View {...props} ref={ref}>
+      {props.children}
+    </View>
+  ));
+  const MockMarker = props => <View {...props}>{props.children}</View>;
+  const MockCircle = props => <View {...props}>{props.children}</View>;
+  const MockUrlTile = props => <View {...props} />;
+  return {
+    __esModule: true,
+    default: MockMapView,
+    Marker: MockMarker,
+    Circle: MockCircle,
+    UrlTile: MockUrlTile,
+  };
+});
+
 

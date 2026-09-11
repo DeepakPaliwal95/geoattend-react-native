@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { ThemeColors } from '../../utils/theme.utils';
@@ -15,16 +14,23 @@ import {
   fontFamily,
 } from '../../utils/fontIcons.utils';
 import { wp, hp } from '../../utils/responsive.utils';
-import {
-  getStatusBadgeStyle,
-  getErrorMessage,
-} from '../../utils/helper.utils';
-import { MainHeader } from '../../components';
+import { formatDistance, formatCheckInTime } from '../../utils/helper.utils';
+import { calculateDistance, isInsideGeofence } from '../../utils/geofence.utils';
+import { OFFICE_LOCATION } from '../../constants/location';
+import { MainHeader, AttendanceMap } from '../../components';
 import { useLocation } from '../../hooks';
+import { useAttendanceStore } from '../../store/attendanceStore';
+import { AttendanceRecord } from '../../types/attendance';
 
 export default function HomeScreen() {
-  const { location, status, error, startTracking, stopTracking, retry } =
-    useLocation();
+  const { location, startTracking, stopTracking } = useLocation();
+
+  const addAttendance = useAttendanceStore(state => state.addAttendance);
+  const records = useAttendanceStore(state => state.records);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayRecord = records.find(r => r.date === todayStr);
+  const hasCheckedIn = !!todayRecord;
 
   useEffect(() => {
     startTracking();
@@ -33,141 +39,151 @@ export default function HomeScreen() {
     };
   }, [startTracking, stopTracking]);
 
-  const badge = getStatusBadgeStyle(status);
+  // Calculate live distance from office in meters
+  const distance =
+    location && location.latitude && location.longitude
+      ? calculateDistance(
+          location.latitude,
+          location.longitude,
+          OFFICE_LOCATION.latitude,
+          OFFICE_LOCATION.longitude,
+        )
+      : null;
+
+  const isInside = isInsideGeofence(distance);
+
+  const handleCheckIn = () => {
+    if (!location || !isInside || hasCheckedIn) {
+      return;
+    }
+
+    const newRecord: AttendanceRecord = {
+      id: Date.now().toString(),
+      date: todayStr,
+      checkInTime: formatCheckInTime(new Date()),
+      latitude: location.latitude,
+      longitude: location.longitude,
+      distanceFromOffice: distance ?? 0,
+      status: 'checked_in',
+    };
+
+    addAttendance(newRecord);
+  };
 
   return (
     <View style={styles.container}>
       <MainHeader />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Status Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>GPS Tracking Status</Text>
+      <View style={styles.content}>
+        {/* Top Map Section */}
+        <AttendanceMap
+          userLocation={location}
+          isInside={isInside}
+          style={styles.mapSection}
+        />
+
+        {/* Bottom Card Section */}
+        <ScrollView
+          style={styles.bottomSheet}
+          contentContainerStyle={styles.bottomSheetContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* Office Header */}
+          <View style={styles.officeHeader}>
+            <Text style={styles.officeTitle}>Office</Text>
+            <Text style={styles.officeSubtitle}>(100 m radius)</Text>
+          </View>
+
+          {/* Distance Row */}
+          <View style={styles.distanceRow}>
+            <View style={styles.distanceLeft}>
+              <Text style={styles.distanceLabel}>Distance from office</Text>
+              <Text style={styles.distanceValue}>
+                {formatDistance(distance)}
+              </Text>
+            </View>
             <View
               style={[
-                styles.badge,
-                { backgroundColor: badge.backgroundColor },
+                styles.statusBadge,
+                isInside ? styles.badgeInside : styles.badgeOutside,
               ]}
             >
-              {status === 'starting' ? (
-                <ActivityIndicator
-                  size="small"
-                  color={badge.textColor}
-                  style={styles.badgeSpinner}
-                />
-              ) : badge.icon ? (
-                <Ionicons
-                  name={badge.icon}
-                  size={fontSize.f14}
-                  color={badge.textColor}
-                  style={styles.badgeIcon}
-                />
-              ) : null}
-              <Text style={[styles.badgeText, { color: badge.textColor }]}>
-                {badge.label}
+              <Text
+                style={[
+                  styles.badgeText,
+                  isInside ? styles.badgeTextInside : styles.badgeTextOutside,
+                ]}
+              >
+                {isInside ? 'Inside Office' : 'Outside Office'}
               </Text>
             </View>
           </View>
 
-          {status === 'starting' && (
-            <View style={styles.startingContainer}>
-              <Text style={styles.startingText}>
-                Acquiring initial satellite fix...
+          {/* Dynamic Alert Banner */}
+          {hasCheckedIn ? (
+            <View style={[styles.alertBanner, styles.alertBannerSuccess]}>
+              <Ionicons
+                name={IconNames.checkmarkCircleFilled}
+                size={fontSize.f24}
+                color={ThemeColors.green}
+                style={styles.alertIcon}
+              />
+              <View style={styles.alertTextGroup}>
+                <Text style={styles.alertTitleSuccess}>
+                  Checked In Successfully!
+                </Text>
+                <Text style={styles.alertSubtitleSuccess}>
+                  Today at {todayRecord.checkInTime}
+                </Text>
+              </View>
+            </View>
+          ) : isInside ? (
+            <View style={[styles.alertBanner, styles.alertBannerSuccess]}>
+              <Ionicons
+                name={IconNames.checkmarkCircleFilled}
+                size={fontSize.f24}
+                color={ThemeColors.green}
+                style={styles.alertIcon}
+              />
+              <Text style={styles.alertMessageSuccess}>
+                You are inside the office area.{'\n'}You can now mark your
+                attendance.
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.alertBanner, styles.alertBannerDanger]}>
+              <Ionicons
+                name={IconNames.alertCircleFilled}
+                size={fontSize.f24}
+                color={ThemeColors.danger}
+                style={styles.alertIcon}
+              />
+              <Text style={styles.alertMessageDanger}>
+                You are outside the office area.{'\n'}Move closer to mark your
+                attendance.
               </Text>
             </View>
           )}
 
-          {status === 'error' && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{getErrorMessage(error)}</Text>
-              <TouchableOpacity
-                style={styles.retryButton}
-                activeOpacity={0.8}
-                onPress={retry}
-              >
-                <Ionicons
-                  name={IconNames.refresh}
-                  size={fontSize.f16}
-                  color={ThemeColors.white}
-                />
-                <Text style={styles.retryButtonText}>Retry GPS</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Location Details when available */}
-          {location && (
-            <View style={styles.detailsContainer}>
-              <View style={styles.metricRow}>
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Latitude</Text>
-                  <Text style={styles.metricValue}>
-                    {location.latitude.toFixed(6)}°
-                  </Text>
-                </View>
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Longitude</Text>
-                  <Text style={styles.metricValue}>
-                    {location.longitude.toFixed(6)}°
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.metricRow}>
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>GPS Accuracy</Text>
-                  <Text
-                    style={[
-                      styles.metricValue,
-                      {
-                        color:
-                          location.accuracy <= 20
-                            ? ThemeColors.green
-                            : ThemeColors.warning,
-                      },
-                    ]}
-                  >
-                    ±{Math.round(location.accuracy)} m
-                  </Text>
-                </View>
-                <View style={styles.metricItem}>
-                  <Text style={styles.metricLabel}>Last Updated</Text>
-                  <Text style={styles.metricValue}>
-                    {new Date(location.timestamp).toLocaleTimeString()}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Manual Controls */}
-          <View style={styles.controlsRow}>
-            {status === 'tracking' ? (
-              <TouchableOpacity
-                style={styles.stopButton}
-                activeOpacity={0.8}
-                onPress={stopTracking}
-              >
-                <Text style={styles.stopButtonText}>Stop Tracking</Text>
-              </TouchableOpacity>
-            ) : status === 'idle' ? (
-              <TouchableOpacity
-                style={styles.startButton}
-                activeOpacity={0.8}
-                onPress={startTracking}
-              >
-                <Text style={styles.startButtonText}>Start Tracking</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </View>
-      </ScrollView>
+          {/* Action Button */}
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              hasCheckedIn || !isInside
+                ? styles.actionButtonDisabled
+                : styles.actionButtonActive,
+            ]}
+            disabled={hasCheckedIn || !isInside}
+            activeOpacity={0.85}
+            onPress={handleCheckIn}
+          >
+            <Text style={styles.actionButtonText}>
+              {hasCheckedIn ? 'Checked In' : 'Check In'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -177,133 +193,148 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: ThemeColors.background,
   },
-  scrollContent: {
-    paddingHorizontal: wp('4.5%'),
-    paddingVertical: hp('2%'),
+  content: {
+    flex: 1,
   },
-  card: {
+  mapSection: {
+    height: hp('42%'),
+  },
+  bottomSheet: {
+    flex: 1,
     backgroundColor: ThemeColors.cardBackground,
-    borderRadius: wp('4%'),
-    borderWidth: 1,
-    borderColor: ThemeColors.border,
-    padding: wp('4.5%'),
-    marginBottom: hp('2%'),
+    borderTopLeftRadius: wp('6%'),
+    borderTopRightRadius: wp('6%'),
+    marginTop: -hp('2%'),
+    shadowColor: ThemeColors.black,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  cardHeader: {
+  bottomSheetContent: {
+    paddingHorizontal: wp('5%'),
+    paddingTop: hp('2%'),
+    paddingBottom: hp('3%'),
+  },
+  officeHeader: {
+    alignItems: 'center',
+    marginBottom: hp('1.8%'),
+  },
+  officeTitle: {
+    fontSize: fontSize.f16,
+    fontFamily: fontFamily.bold,
+    color: ThemeColors.textPrimary,
+  },
+  officeSubtitle: {
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.regular,
+    color: ThemeColors.textSecondary,
+    marginTop: hp('0.2%'),
+  },
+  distanceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: hp('1.5%'),
+    marginBottom: hp('2%'),
   },
-  cardTitle: {
-    fontSize: fontSize.f16,
-    fontFamily: fontFamily.semiBold,
+  distanceLeft: {
+    flex: 1,
+  },
+  distanceLabel: {
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.regular,
+    color: ThemeColors.textSecondary,
+    marginBottom: hp('0.3%'),
+  },
+  distanceValue: {
+    fontSize: fontSize.f24,
+    fontFamily: fontFamily.bold,
     color: ThemeColors.textPrimary,
   },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: wp('2.5%'),
-    paddingVertical: hp('0.6%'),
-    borderRadius: wp('3%'),
+  statusBadge: {
+    paddingHorizontal: wp('3.5%'),
+    paddingVertical: hp('0.7%'),
+    borderRadius: wp('4%'),
   },
-  badgeSpinner: {
-    marginRight: wp('1.5%'),
+  badgeInside: {
+    backgroundColor: ThemeColors.greenS2,
   },
-  badgeIcon: {
-    marginRight: wp('1.5%'),
+  badgeOutside: {
+    backgroundColor: ThemeColors.outsideAlertBackground,
   },
   badgeText: {
     fontSize: fontSize.f12,
-    fontFamily: fontFamily.medium,
-  },
-  startingContainer: {
-    paddingVertical: hp('2%'),
-    alignItems: 'center',
-  },
-  startingText: {
-    fontSize: fontSize.f14,
-    fontFamily: fontFamily.regular,
-    color: ThemeColors.textSecondary,
-  },
-  errorContainer: {
-    paddingVertical: hp('1.5%'),
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: fontSize.f14,
-    fontFamily: fontFamily.regular,
-    color: ThemeColors.danger,
-    textAlign: 'center',
-    marginBottom: hp('1.5%'),
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: ThemeColors.primary,
-    paddingHorizontal: wp('5%'),
-    paddingVertical: hp('1.2%'),
-    borderRadius: wp('2.5%'),
-  },
-  retryButtonText: {
-    color: ThemeColors.white,
-    fontSize: fontSize.f14,
     fontFamily: fontFamily.semiBold,
-    marginLeft: wp('2%'),
   },
-  detailsContainer: {
-    paddingTop: hp('1%'),
+  badgeTextInside: {
+    color: ThemeColors.green,
   },
-  metricRow: {
+  badgeTextOutside: {
+    color: ThemeColors.danger,
+  },
+  alertBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: wp('3.5%'),
+    paddingVertical: hp('1.4%'),
+    borderRadius: wp('3%'),
+    borderWidth: 1,
+    marginBottom: hp('2.5%'),
   },
-  metricItem: {
+  alertBannerSuccess: {
+    backgroundColor: ThemeColors.insideAlertBackground,
+    borderColor: ThemeColors.insideAlertBorder,
+  },
+  alertBannerDanger: {
+    backgroundColor: ThemeColors.outsideAlertBackground,
+    borderColor: ThemeColors.outsideAlertBorder,
+  },
+  alertIcon: {
+    marginRight: wp('3%'),
+  },
+  alertTextGroup: {
     flex: 1,
   },
-  metricLabel: {
+  alertTitleSuccess: {
+    fontSize: fontSize.f14,
+    fontFamily: fontFamily.bold,
+    color: ThemeColors.insideAlertText,
+  },
+  alertSubtitleSuccess: {
     fontSize: fontSize.f12,
     fontFamily: fontFamily.regular,
-    color: ThemeColors.textSecondary,
-    marginBottom: hp('0.4%'),
+    color: ThemeColors.insideAlertText,
+    marginTop: hp('0.2%'),
   },
-  metricValue: {
-    fontSize: fontSize.f16,
-    fontFamily: fontFamily.semiBold,
-    color: ThemeColors.textPrimary,
+  alertMessageSuccess: {
+    flex: 1,
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.medium,
+    color: ThemeColors.insideAlertText,
+    lineHeight: 18,
   },
-  divider: {
-    height: 1,
-    backgroundColor: ThemeColors.border,
-    marginVertical: hp('1.5%'),
+  alertMessageDanger: {
+    flex: 1,
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.medium,
+    color: ThemeColors.outsideAlertText,
+    lineHeight: 18,
   },
-  controlsRow: {
-    marginTop: hp('2%'),
+  actionButton: {
+    height: hp('6%'),
+    borderRadius: wp('2.5%'),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  startButton: {
+  actionButtonActive: {
     backgroundColor: ThemeColors.primary,
-    height: hp('5.5%'),
-    borderRadius: wp('2.5%'),
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  startButtonText: {
+  actionButtonDisabled: {
+    backgroundColor: ThemeColors.buttonDisabled,
+  },
+  actionButtonText: {
     color: ThemeColors.white,
-    fontSize: fontSize.f14,
-    fontFamily: fontFamily.semiBold,
-  },
-  stopButton: {
-    backgroundColor: ThemeColors.iconContainerBackground,
-    height: hp('5.5%'),
-    borderRadius: wp('2.5%'),
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: ThemeColors.border,
-  },
-  stopButtonText: {
-    color: ThemeColors.textSecondary,
-    fontSize: fontSize.f14,
+    fontSize: fontSize.f16,
     fontFamily: fontFamily.semiBold,
   },
 });

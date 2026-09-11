@@ -1,6 +1,9 @@
 import {
   getStatusBadgeStyle,
   getErrorMessage,
+  formatDistance,
+  formatCheckInTime,
+  formatDateHeader,
 } from '../src/utils/helper.utils';
 import { ThemeColors } from '../src/utils/theme.utils';
 import { IconNames } from '../src/utils/fontIcons.utils';
@@ -65,5 +68,61 @@ describe('helper.utils - getErrorMessage', () => {
     expect(getErrorMessage(null)).toBe(
       'An error occurred while tracking location. Please tap retry.',
     );
+  });
+});
+
+describe('helper.utils - formatDistance', () => {
+  it('formats valid numbers with rounded meter unit', () => {
+    expect(formatDistance(248)).toBe('248 m');
+    expect(formatDistance(41.8)).toBe('42 m');
+    expect(formatDistance(0)).toBe('0 m');
+  });
+
+  it('returns placeholder when null, undefined, or NaN', () => {
+    expect(formatDistance(null)).toBe('-- m');
+    expect(formatDistance(undefined)).toBe('-- m');
+    expect(formatDistance(NaN)).toBe('-- m');
+  });
+});
+
+describe('helper.utils - formatCheckInTime', () => {
+  it('formats morning time correctly', () => {
+    const morning = new Date(2024, 9, 15, 9, 24, 0);
+    expect(formatCheckInTime(morning)).toBe('09:24 AM');
+  });
+
+  it('formats afternoon/evening time correctly', () => {
+    const evening = new Date(2024, 9, 15, 17, 5, 0);
+    expect(formatCheckInTime(evening)).toBe('05:05 PM');
+  });
+
+  it('formats midnight and noon correctly', () => {
+    const midnight = new Date(2024, 9, 15, 0, 0, 0);
+    expect(formatCheckInTime(midnight)).toBe('12:00 AM');
+    const noon = new Date(2024, 9, 15, 12, 0, 0);
+    expect(formatCheckInTime(noon)).toBe('12:00 PM');
+  });
+});
+
+describe('helper.utils - formatDateHeader', () => {
+  it('formats today date properly', () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const formatted = formatDateHeader(dateStr);
+    expect(formatted.startsWith('Today,')).toBe(true);
+  });
+
+  it('formats historical date with day of week', () => {
+    // 2024-10-14 was Monday
+    const formatted = formatDateHeader('2024-10-14');
+    expect(formatted).toBe('Mon, 14 Oct 2024');
+  });
+
+  it('returns empty string for empty input', () => {
+    expect(formatDateHeader('')).toBe('');
   });
 });
