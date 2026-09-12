@@ -179,10 +179,10 @@ GeoAttend/
 ├── src/
 │   ├── assets/                      # App icons and vector assets
 │   ├── components/                  # Reusable UI components
-│   │   ├── headers/                 # Screen headers (MainHeader, etc.)
-│   │   ├── hoc/                     # Higher-order components (SafeArea, etc.)
-│   │   └── map/                     # Map visualization components
-│   │       └── AttendanceMap.tsx    # Google Map with markers, geofence circle & live tracking
+│   │   ├── common/                  # Generic UI components (EmptyListComponent, etc.)
+│   │   ├── headers/                 # Screen headers (MainHeader, StackHeader)
+│   │   ├── hoc/                     # Higher-order components (SafeAreaWrapper, etc.)
+│   │   └── map/                     # Map visualization components (AttendanceMap)
 │   ├── constants/
 │   │   └── location.ts              # Office coordinates, geofence radius & GPS thresholds
 │   ├── hooks/                       # Custom reusable React hooks
