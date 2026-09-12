@@ -1,12 +1,35 @@
-/**
- * Represents a single successful attendance check-in record.
- */
 export interface AttendanceRecord {
   id: string;
-  date: string; // Format: YYYY-MM-DD
-  checkInTime: string; // Format: hh:mm A (e.g., '09:24 AM')
+
+  /**
+   * Local calendar date.
+   *
+   * Example:
+   * 2026-09-12
+   */
+  date: string;
+
+  /**
+   * Formatted time for display.
+   */
+  checkInTime: string;
+
+  /**
+   * Actual coordinates captured during Check In.
+   */
   latitude: number;
   longitude: number;
-  distanceFromOffice: number; // in meters
+
+  /**
+   * GPS accuracy at Check In.
+   */
+  accuracy: number;
+
+  /**
+   * Distance from office at Check In.
+   */
+  distanceFromOffice: number;
+
   status: 'checked_in';
 }
+

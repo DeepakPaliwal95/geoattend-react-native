@@ -1,97 +1,466 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# GeoAttend 📍
 
-# Getting Started
+**Enterprise-Grade Geolocation Tracking & Geofence-Based Attendance System**
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+GeoAttend is a robust React Native (CLI) mobile application engineered for automated, geofence-verified attendance tracking. The application pairs real-time GPS tracking with a fixed office geofence (**100-meter radius**), enforcing strict location accuracy, freshness, duplicate prevention, and offline-first persistence.
 
-## Step 1: Start Metro
+Built with **React Native 0.84**, **TypeScript**, **Zustand**, **React Navigation**, **react-native-maps**, and **react-native-geolocation-service**.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+---
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## 📑 Table of Contents
 
-```sh
-# Using npm
+1. [Features & Capabilities](#-features--capabilities)
+2. [Tech Stack & Architecture](#-tech-stack--architecture)
+3. [End-to-End Application Flow](#-end-to-end-application-flow)
+4. [Project Directory Structure](#-project-directory-structure)
+5. [Core Implementation Details](#-core-implementation-details)
+   - [1. Geofence & Distance Calculation](#1-geofence--distance-calculation)
+   - [2. High-Accuracy Location Tracking & Smoothing](#2-high-accuracy-location-tracking--smoothing)
+   - [3. Notification Bar GPS Handling & Auto-Recovery](#3-notification-bar-gps-handling--auto-recovery)
+   - [4. Real-Time Offline Detection & Local Storage](#4-real-time-offline-detection--local-storage)
+   - [5. Check-In Validation & Duplicate Prevention](#5-check-in-validation--duplicate-prevention)
+   - [6. Runtime Permissions & Fallbacks](#6-runtime-permissions--fallbacks)
+6. [Design System & Utility Layer](#-design-system--utility-layer)
+7. [Screens & User Interface](#-screens--user-interface)
+8. [Edge Cases & Error Handling](#-edge-cases--error-handling)
+9. [Getting Started & Setup](#-getting-started--setup)
+10. [Automated Testing](#-automated-testing)
+
+---
+
+## 📱 Features & Capabilities
+
+- **Real-Time Foreground GPS Tracking**: High-accuracy fused location tracking with continuous updates even while stationary.
+- **Fixed Office Geofence (100m Radius)**: Single source of truth for geographical attendance boundary.
+- **Interactive Map Visualization**: Renders user position, office coordinates, live proximity radius, and dynamically colored geofence circle.
+- **Position Smoothing Filter**: Exponential smoothing ($\alpha = 0.25$) on the user interface to stabilize GPS jitter without distorting ground-truth coordinates.
+- **Notification Bar Location Off Handling**: Instant detection of GPS toggles from the notification shade/quick settings, with automatic background recovery when re-enabled.
+- **Network Connectivity & Offline Support**: Real-time connection monitoring with `@react-native-community/netinfo`. Core check-in functions seamlessly offline using local GPS and persistent storage.
+- **Local Attendance Persistence**: Zustand store backed by `@react-native-async-storage/async-storage` ensures historical records survive app restarts and kills.
+- **Attendance History Log**: Chronological list of past check-ins displaying exact check-in timestamps, dates, and distances from the office.
+- **Strict Check-In Validation**:
+  - Distance check ($\le 100$ meters).
+  - GPS accuracy filter ($\le 30$ meters).
+  - GPS fix freshness check ($\le 10$ seconds old).
+  - Duplicate check-in prevention (one check-in per calendar day).
+- **Graceful Permissions Workflow**: Handles first-time permission requests, "Don't ask again" permanently blocked states, and provides direct deep-links to app settings.
+
+---
+
+## 🛠 Tech Stack & Architecture
+
+| Layer | Technology | Rationale |
+|---|---|---|
+| **Core Framework** | React Native 0.84 (CLI) | Native performance and complete control over native modules |
+| **Language** | TypeScript | Strong typing, interfaces, and compile-time verification |
+| **State Management** | Zustand (`zustand/middleware`) | Lightweight, hook-friendly, minimal boilerplate with built-in AsyncStorage persistence |
+| **Navigation** | `@react-navigation/native` + Bottom Tabs | Clean tab-based navigation between Home and History |
+| **Maps** | `react-native-maps` | Native Google Maps / Apple Maps integration with circles, markers, and live centering |
+| **Geolocation** | `react-native-geolocation-service` | Direct access to Android `FusedLocationProviderClient` and iOS `CLLocationManager` |
+| **Permissions** | `react-native-permissions` | Cross-platform runtime permission abstraction |
+| **Network** | `@react-native-community/netinfo` | Real-time network reachability detection |
+| **Persistence** | `@react-native-async-storage/async-storage` | On-device key-value store for attendance records |
+| **Testing** | Jest + React Native Testing Library | Unit and component integration testing |
+
+---
+
+## 🧭 End-to-End Application Flow
+
+```text
+                           ┌────────────────────────┐
+                           │       App Launch       │
+                           └───────────┬────────────┘
+                                       │
+                                       ▼
+                           ┌────────────────────────┐
+                           │      SplashScreen      │
+                           └───────────┬────────────┘
+                                       │
+                                       ▼
+                       ┌────────────────────────────────┐
+                       │  Check Location Permissions    │
+                       └───────────────┬────────────────┘
+                                       │
+                ┌──────────────────────┴──────────────────────┐
+                │                                             │
+      [Blocked / Denied]                                  [Granted]
+                │                                             │
+                ▼                                             ▼
+    ┌───────────────────────┐                     ┌───────────────────────┐
+    │   PermissionScreen    │                     │     TabNavigator      │
+    │  (Prompt / Open App   │                     │      HomeScreen       │
+    │       Settings)       │                     └───────────┬───────────┘
+    └───────────────────────┘                                 │
+                                                              ▼
+                                                 ┌─────────────────────────┐
+                                                 │ Check Location Services │
+                                                 │  & Start GPS Tracking   │
+                                                 └────────────┬────────────┘
+                                                              │
+                     ┌────────────────────────────────────────┴────────────────────────────────────────┐
+                     │                                                                                 │
+            [Location OFF in Bar]                                                             [Location ON]
+                     │                                                                                 │
+                     ▼                                                                                 ▼
+         ┌────────────────────────┐                                                       ┌────────────────────────┐
+         │ Status: 'error'        │                                                       │ Receive GPS Fix        │
+         │ Distance: '-- m'       │                                                       │ Smooth Coordinates     │
+         │ Action: 'Enable GPS'   │                                                       │ Calculate Distance     │
+         │ Auto-Recovery Active   │                                                       └───────────┬────────────┘
+         └────────────────────────┘                                                                   │
+                                                                                                      ▼
+                                                                                   ┌─────────────────────────────────────┐
+                                                                                   │ Geofence Check (Threshold: 100m)    │
+                                                                                   └──────────────────┬──────────────────┘
+                                                                                                      │
+                                                   ┌──────────────────────────────────────────────────┴──────────────────────┐
+                                                   │                                                                         │
+                                           [Distance > 100m]                                                         [Distance <= 100m]
+                                                   │                                                                         │
+                                                   ▼                                                                         ▼
+                                       ┌───────────────────────┐                                                 ┌───────────────────────┐
+                                       │ Status: Outside       │                                                 │ Status: Inside        │
+                                       │ Check-In Disabled     │                                                 │ Check-In Enabled      │
+                                       └───────────────────────┘                                                 └───────────┬───────────┘
+                                                                                                                             │
+                                                                                                                  [User Taps Check In]
+                                                                                                                             │
+                                                                                                                             ▼
+                                                                                                                 ┌───────────────────────┐
+                                                                                                                 │ Validate:             │
+                                                                                                                 │ • Accuracy <= 30m     │
+                                                                                                                 │ • Age <= 10s          │
+                                                                                                                 │ • Not checked in today│
+                                                                                                                 └───────────┬───────────┘
+                                                                                                                             │
+                                                                                                                             ▼
+                                                                                                                 ┌───────────────────────┐
+                                                                                                                 │ Save Attendance       │
+                                                                                                                 │ (Zustand+AsyncStorage)│
+                                                                                                                 │ Button -> Checked In  │
+                                                                                                                 └───────────────────────┘
+```
+
+---
+
+## 🗂 Project Directory Structure
+
+```text
+GeoAttend/
+├── android/                         # Android native project & Gradle config
+├── ios/                             # iOS native project & Podfile
+├── docs/                            # Architectural specifications & requirements
+│   └── GeoAttend_README.md          # Reference spec
+├── src/
+│   ├── assets/                      # App icons and vector assets
+│   ├── components/                  # Reusable UI components
+│   │   ├── AttendanceMap.tsx        # Native map with markers, geofence circle & live tracking
+│   │   ├── headers/                 # Screen headers (MainHeader, etc.)
+│   │   └── hoc/                     # Higher-order components (SafeArea, etc.)
+│   ├── constants/
+│   │   └── location.ts              # Office coordinates, geofence radius & GPS thresholds
+│   ├── hooks/                       # Custom reusable React hooks
+│   │   ├── useLocation.ts           # Core GPS watcher, error states & auto-recovery
+│   │   ├── useNetwork.ts            # Network connectivity and offline monitor
+│   │   ├── usePermission.ts         # Location permission checker and requester
+│   │   ├── useStableLocation.ts     # Exponential location smoothing for map/UI
+│   │   └── index.ts                 # Hook exports
+│   ├── navigations/                 # Navigation setup
+│   │   ├── Application.tsx          # Root Stack (Splash -> Permission -> Tabs)
+│   │   └── TabNavigator.tsx         # Bottom Tabs (Home & Attendance History)
+│   ├── screens/
+│   │   ├── permission/
+│   │   │   └── PermissionScreen.tsx # Fallback screen for denied/blocked location permissions
+│   │   ├── splash/
+│   │   │   └── SplashScreen.tsx     # Animated launch splash screen
+│   │   └── tab/
+│   │       ├── HomeScreen.tsx       # Main dashboard: Map, geofence status, offline alert & check-in
+│   │       └── AttendanceHistory.tsx# Historical check-in records list
+│   ├── store/                       # State management
+│   │   └── attendanceStore.ts       # Zustand attendance store with AsyncStorage persistence
+│   ├── types/                       # TypeScript models
+│   │   ├── attendance.ts            # AttendanceRecord & AttendanceStatus types
+│   │   └── navigation.type.ts       # Navigation stack & tab parameter types
+│   └── utils/                       # Shared utility helpers (Rule-enforced single source of truth)
+│       ├── fontIcons.utils.ts       # Centralized Ionicons mappings and font scale
+│       ├── geofence.utils.ts        # Haversine distance and geofence evaluation
+│       ├── helper.utils.ts          # Date/time formatting and string formatters
+│       ├── location.utils.ts        # Geolocation service wrappers, validation & accuracy checks
+│       ├── navigation.utils.ts      # Navigation container ref and imperative routing
+│       ├── permission.utils.ts      # Android/iOS runtime permission checks and settings links
+│       ├── responsive.utils.ts      # Screen width/height percentage scaling (wp, hp)
+│       └── theme.utils.ts           # Color tokens, dark/light styles, badges & borders
+└── __tests__/                       # Jest unit and integration test suites
+```
+
+---
+
+## 🔬 Core Implementation Details
+
+### 1. Geofence & Distance Calculation
+
+The office location and geofence radius are defined in [src/constants/location.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/constants/location.ts):
+
+```typescript
+export const OFFICE_LOCATION = {
+  latitude: 25.053778,
+  longitude: 73.889511,
+};
+
+export const GEOFENCE_RADIUS = 100; // 100 meters
+```
+
+The geographical distance between the user's current coordinates and the office is calculated using the **Haversine Formula** in [src/utils/geofence.utils.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/utils/geofence.utils.ts):
+
+$$d = 2R \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta\phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)}\right)$$
+
+- **Inside Office**: Calculated distance $\le 100\text{ m} \implies$ Check-in permitted.
+- **Outside Office**: Calculated distance $> 100\text{ m} \implies$ Check-in disabled.
+
+---
+
+### 2. High-Accuracy Location Tracking & Smoothing
+
+Foreground location tracking is configured in [src/utils/location.utils.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/utils/location.utils.ts) using `react-native-geolocation-service`:
+
+```typescript
+export const DEFAULT_WATCH_OPTIONS = {
+  enableHighAccuracy: true,
+  distanceFilter: 0,            // Updates continue even when stationary
+  interval: 3000,              // Desired update interval: 3 seconds
+  fastestInterval: 1500,       // Fastest interval: 1.5 seconds
+  showLocationDialog: true,    // Prompts native location dialog if GPS is off
+  useSignificantChanges: false,
+};
+```
+
+#### Exponential Location Smoothing
+To eliminate GPS jitter and map marker vibration while the user is stationary, [src/hooks/useStableLocation.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/hooks/useStableLocation.ts) applies exponential smoothing for display coordinates:
+
+$$\text{pos}_{\text{smooth}} = \alpha \cdot \text{pos}_{\text{new}} + (1 - \alpha) \cdot \text{pos}_{\text{prev}} \quad (\alpha = 0.25)$$
+
+> **Important**: The smoothed coordinate is used exclusively for fluid UI and map rendering. Official check-in validation always evaluates the raw, unadulterated GPS fix.
+
+---
+
+### 3. Notification Bar GPS Handling & Auto-Recovery
+
+When a user pulls down the notification shade or Android Quick Settings and turns off **Location**:
+1. Android's `FusedLocationProvider` fires error code 2: `PositionError.POSITION_UNAVAILABLE`.
+2. In [src/hooks/useLocation.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/hooks/useLocation.ts), the native watcher is immediately terminated, `watchIdRef.current` is cleared, and `status` transitions to `'error'`.
+3. The UI updates instantaneously:
+   - Distance changes to `-- m` (no stale distance shown).
+   - Badge changes to **GPS Off**.
+   - Alert banner instructs the user to enable Location.
+   - Primary action button converts to **Enable GPS / Retry**.
+4. **Auto-Recovery**:
+   - **AppState Listener**: Returning to the app triggers an automatic `retry()`.
+   - **Background Polling**: An active lightweight probe queries `getCurrentLocation` every 3 seconds while in error state. As soon as Location is re-enabled, tracking resumes automatically without requiring user taps.
+
+---
+
+### 4. Real-Time Offline Detection & Local Storage
+
+- **Hook ([src/hooks/useNetwork.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/hooks/useNetwork.ts))**: Listens to `@react-native-community/netinfo`. Exposes `isOffline`.
+- **Offline Banner**: In [src/screens/tab/HomeScreen.tsx](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/screens/tab/HomeScreen.tsx), an amber notification banner displays:
+  > ☁️ **You are offline • Attendance will be saved locally**
+- **Offline Resilience**: Because GPS hardware operates independently of cellular/Wi-Fi data, employees can mark attendance even in basements or offline zones. Attendance records are stored locally via `AsyncStorage` and are ready to sync when an internet connection returns.
+
+---
+
+### 5. Check-In Validation & Duplicate Prevention
+
+When the user taps **Check In**, the application executes a comprehensive 5-step validation gate before persisting the record:
+
+```typescript
+// 1. Availability Check
+if (!location) throw new Error('Acquiring location...');
+
+// 2. Freshness Check (within 10 seconds)
+if (!isFreshLocation(location, MAX_LOCATION_AGE_MS)) {
+  throw new Error('Location data is stale. Please wait for fresh GPS fix.');
+}
+
+// 3. Accuracy Threshold Check (within 30 meters)
+if (!isAcceptableAccuracy(location, MAX_ACCURACY_THRESHOLD_METERS)) {
+  throw new Error(`GPS accuracy too low (±${Math.round(location.coords.accuracy)}m). Move to an open area.`);
+}
+
+// 4. Geofence Check (within 100 meters)
+if (distance > GEOFENCE_RADIUS) {
+  throw new Error(`You are outside the office area (${Math.round(distance)}m). Move closer.`);
+}
+
+// 5. Duplicate Check
+if (hasCheckedInToday()) {
+  throw new Error('You have already checked in today.');
+}
+```
+
+Records are stored in [src/store/attendanceStore.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/store/attendanceStore.ts) using the schema:
+
+```typescript
+export interface AttendanceRecord {
+  id: string;               // Unique timestamp-based ID
+  date: string;             // YYYY-MM-DD format
+  checkInTime: string;      // e.g. "09:42 AM"
+  latitude: number;
+  longitude: number;
+  distanceFromOffice: number; // In meters
+  status: 'checked_in';
+}
+```
+
+---
+
+### 6. Runtime Permissions & Fallbacks
+
+Handled in [src/utils/permission.utils.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/utils/permission.utils.ts) and [src/hooks/usePermission.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/hooks/usePermission.ts):
+- **Android**: Checks and requests `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION`.
+- **iOS**: Checks and requests `LOCATION_WHEN_IN_USE`.
+- **Permanently Blocked / Denied**: If a user selects "Don't ask again", the app displays [PermissionScreen.tsx](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/screens/permission/PermissionScreen.tsx) with clear instructions and an **Open Settings** button that deep-links directly into device application settings via `openSettings()`.
+
+---
+
+## 🎨 Design System & Utility Layer
+
+Per strict architecture guidelines, the application prohibits hardcoded styling values, inline colors, and duplicated logic. All design tokens are centralized in `src/utils/`:
+
+- **Responsive Scaling ([src/utils/responsive.utils.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/utils/responsive.utils.ts))**: `wp(percentage)` and `hp(percentage)` for universal scaling across all mobile screen aspect ratios.
+- **Theme Palette ([src/utils/theme.utils.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/utils/theme.utils.ts))**:
+  - Primary Brand: `#2563EB`
+  - Success / Inside: `#10B981`
+  - Danger / Error: `#EF4444`
+  - Warning / GPS Off: `#F59E0B`
+  - Offline Banner: `#FFFBEB` / `#B45309`
+- **Typography & Icons ([src/utils/fontIcons.utils.ts](file:///Users/deepakpaliwal/Desktop/GeoAttend/src/utils/fontIcons.utils.ts))**: Consistent icon names (`cloudOffline`, `location`, `checkmarkCircle`, etc.) and font size tokens (`f10` through `f36`).
+
+---
+
+## 📲 Screens & User Interface
+
+### 1. Home / Attendance Screen (`HomeScreen.tsx`)
+- **Map View (`AttendanceMap.tsx`)**:
+  - Live animated map with automatic centering on initial GPS fix.
+  - Blue dot with accuracy ring for the user.
+  - Red office marker.
+  - Geofence circle: Green fill when inside ($\le 100\text{m}$), Red fill when outside ($> 100\text{m}$).
+- **Status Cards**:
+  - Real-time distance readout (e.g. `42 m` or `-- m`).
+  - Geofence badge (`Inside Office`, `Outside Office`, `GPS Off`).
+  - Office address & GPS accuracy display.
+- **Dynamic Action Button**:
+  - Outside geofence: Disabled `Check In` button.
+  - Inside geofence: Active green `Check In` button with haptic feedback.
+  - Already checked in: Disabled `✓ Checked In` button with timestamp.
+  - GPS disabled: Amber `Enable GPS / Retry` button.
+
+### 2. Attendance History Screen (`AttendanceHistory.tsx`)
+- Chronological list of historical attendance records.
+- Date group headers (e.g. `Today, 12 Sep 2026`).
+- Individual record cards showing exact check-in time (`09:42 AM`) and verified distance from office (`42 m`).
+- Friendly empty-state illustration when no check-ins have been recorded.
+
+### 3. Permission Fallback Screen (`PermissionScreen.tsx`)
+- Displayed when location permissions are denied or blocked.
+- Explains why location services are essential for attendance verification.
+- Direct "Open Settings" action button.
+
+---
+
+## 🎯 Edge Cases & Error Handling
+
+| Edge Case | Root Cause | App Behavior |
+|---|---|---|
+| **Location toggled off in notification shade** | User disables GPS in quick settings | Catches `POSITION_UNAVAILABLE`, halts watcher, resets distance to `-- m`, displays "GPS Off" badge and "Enable GPS / Retry" button; auto-recovers when turned back on. |
+| **User outside 100m geofence** | Employee is not at the office | Check-in button disabled; displays remaining distance and status "Outside Office". |
+| **Poor GPS accuracy (> 30m)** | Tall buildings, indoor attenuation | Prevents false check-ins; alerts user that GPS accuracy is insufficient and requests moving closer to a window or outdoors. |
+| **Stale GPS cache (> 10s)** | Android cached last-known position | Rejects check-in until fresh, real-time coordinates are streamed from hardware. |
+| **Duplicate check-in** | Tapping check-in multiple times | Store validates `date === today`; disables button and displays "Already Checked In". |
+| **No Internet Connection** | Airplane mode or no data | Offline banner is displayed; check-in continues locally via GPS and persists to AsyncStorage. |
+| **Permission permanently blocked** | User chose "Don't ask again" | Redirects to dedicated `PermissionScreen` with "Open Settings" button. |
+| **App killed & restarted** | OS process termination | Zustand rehydrates records from AsyncStorage; preserves "Checked In" status if done earlier today. |
+
+---
+
+## 🚀 Getting Started & Setup
+
+### Prerequisites
+
+- **Node.js**: $\ge 18$
+- **Yarn** or **npm**
+- **Android SDK & Android Studio** (API level 34/35)
+- **Xcode & CocoaPods** (for macOS / iOS development)
+- **Watchman** (`brew install watchman`)
+
+### Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/DeepakPaliwal95/geoattend-react-native.git
+   cd GeoAttend
+   ```
+
+2. **Install JavaScript dependencies**:
+   ```bash
+   yarn install
+   # or
+   npm install
+   ```
+
+3. **Install iOS CocoaPods (macOS only)**:
+   ```bash
+   cd ios && pod install && cd ..
+   ```
+
+### Running on Android
+
+Ensure an Android emulator or physical device is connected via ADB (`adb devices`):
+
+```bash
+# Start Metro bundler
 npm start
 
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
+# In a separate terminal, launch on Android
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+### Running on iOS
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+```bash
+# Start Metro bundler
+npm start
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
+# In a separate terminal, launch on iOS
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+---
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## 🧪 Automated Testing
 
-## Step 3: Modify your app
+GeoAttend includes a full test suite built with **Jest** and **React Native Testing Library**, covering all utility functions, stores, and custom hooks.
 
-Now that you have successfully run the app, let's make changes!
+```bash
+# Run all unit test suites
+npm test
+```
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+### Test Coverage Highlights
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+- **`useLocation.test.tsx`**: Validates location tracking lifecycle, status transitions, position availability errors, and watcher unmount cleanup.
+- **`useNetwork.test.tsx`**: Tests real-time connectivity changes, reachability events, and offline flag computations.
+- **`attendanceStore.test.ts`**: Verifies record creation, duplicate prevention for the same calendar date, persistence hydration, and history queries.
+- **`geofence.utils.test.ts`**: Tests Haversine distance calculations, boundary condition assertions ($< 100\text{m}$, $= 100\text{m}$, $> 100\text{m}$), and coordinate edge cases.
+- **`location.utils.test.ts`**: Verifies accuracy thresholds, timestamp age validity, and error transformations.
+- **`helper.utils.test.ts`**: Tests distance formatting (`m` and `km`), date header logic, and time string formatters.
+- **`permission.utils.test.ts`**: Tests cross-platform permission states, request handling, and settings links.
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+**Current Test Results:**
+```text
+Test Suites: 9 passed, 9 total
+Tests:       86 passed, 86 total
+Snapshots:   0 total
+Time:        0.672 s
+```

@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { ThemeColors } from '../../utils/theme.utils';
 import {
@@ -14,18 +16,49 @@ import {
   fontFamily,
 } from '../../utils/fontIcons.utils';
 import { wp, hp } from '../../utils/responsive.utils';
-import { formatDistance, formatCheckInTime } from '../../utils/helper.utils';
-import { calculateDistance, isInsideGeofence } from '../../utils/geofence.utils';
-import { OFFICE_LOCATION } from '../../constants/location';
+import {
+  formatDistance,
+  formatCheckInTime,
+  getErrorMessage,
+} from '../../utils/helper.utils';
+import {
+  calculateDistanceFromOffice,
+  isInsideGeofence,
+  isConservativelyInsideGeofence,
+} from '../../utils/geofence.utils';
+import {
+  GEOFENCE_RADIUS,
+  MAX_ACCURACY_THRESHOLD_METERS,
+} from '../../constants/location';
+import {
+  getCurrentLocation,
+  isValidLocation,
+  isFreshLocation,
+  isAcceptableAccuracy,
+  DEFAULT_CURRENT_OPTIONS,
+} from '../../utils/location.utils';
 import { MainHeader, AttendanceMap } from '../../components';
-import { useLocation } from '../../hooks';
+import { useLocation, useStableLocation, useNetwork } from '../../hooks';
 import { useAttendanceStore } from '../../store/attendanceStore';
 import { AttendanceRecord } from '../../types/attendance';
 
 export default function HomeScreen() {
-  const { location, startTracking, stopTracking } = useLocation();
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+
+  // Real-time network / offline state
+  const { isOffline } = useNetwork();
+
+  // Raw accepted GPS tracking
+  const { location, status, error, startTracking, stopTracking, retry } =
+    useLocation();
+
+  // Visually smoothed location exclusively for UI & Map
+  const stableLocation = useStableLocation(location);
 
   const addAttendance = useAttendanceStore(state => state.addAttendance);
+  const hasCheckedInToday = useAttendanceStore(
+    state => state.hasCheckedInToday,
+  );
   const records = useAttendanceStore(state => state.records);
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -39,45 +72,160 @@ export default function HomeScreen() {
     };
   }, [startTracking, stopTracking]);
 
-  // Calculate live distance from office in meters
-  const distance =
-    location && location.latitude && location.longitude
-      ? calculateDistance(
-          location.latitude,
-          location.longitude,
-          OFFICE_LOCATION.latitude,
-          OFFICE_LOCATION.longitude,
-        )
-      : null;
+  // When GPS fix hasn't arrived yet and no terminal error has occurred
+  const isFetchingLocation =
+    (!location || !stableLocation) && status !== 'error';
 
+  // Visual distance from office using smoothed location
+  const rawStableDistance = calculateDistanceFromOffice(stableLocation);
+  const distance = !Number.isNaN(rawStableDistance) ? rawStableDistance : null;
+
+  // Basic visual indicator
   const isInside = isInsideGeofence(distance);
+  const isAccurate =
+    !!location &&
+    isAcceptableAccuracy(location.accuracy, MAX_ACCURACY_THRESHOLD_METERS);
 
-  const handleCheckIn = () => {
-    if (!location || !isInside || hasCheckedIn) {
+
+  const handleCheckIn = async () => {
+    if (hasCheckedInToday(todayStr)) {
+      Alert.alert('Check In', 'You have already checked in today.');
       return;
     }
 
-    const newRecord: AttendanceRecord = {
-      id: Date.now().toString(),
-      date: todayStr,
-      checkInTime: formatCheckInTime(new Date()),
-      latitude: location.latitude,
-      longitude: location.longitude,
-      distanceFromOffice: distance ?? 0,
-      status: 'checked_in',
-    };
+    if (isCheckingIn) {
+      return;
+    }
 
-    addAttendance(newRecord);
+    setIsCheckingIn(true);
+
+    try {
+      // Step 9: Check In requests a fresh actual GPS location fix
+      const freshLocation = await getCurrentLocation(DEFAULT_CURRENT_OPTIONS);
+
+      // Validate location structure
+      if (!isValidLocation(freshLocation)) {
+        Alert.alert(
+          'Check In',
+          'Unable to get your location.\nPlease move to an open area and try again.',
+        );
+        return;
+      }
+
+      // Validate freshness
+      if (!isFreshLocation(freshLocation.timestamp)) {
+        Alert.alert(
+          'Check In',
+          'Unable to get your location.\nPlease move to an open area and try again.',
+        );
+        return;
+      }
+
+      // Validate GPS accuracy threshold (<= 30m)
+      if (
+        !isAcceptableAccuracy(
+          freshLocation.accuracy,
+          MAX_ACCURACY_THRESHOLD_METERS,
+        )
+      ) {
+        Alert.alert(
+          'Check In',
+          'Location accuracy is too low.\nPlease move to an open area and try again.',
+        );
+        return;
+      }
+
+      // Calculate distance from office using the fresh location
+      const freshDistance = calculateDistanceFromOffice(freshLocation);
+
+      if (Number.isNaN(freshDistance) || freshDistance > GEOFENCE_RADIUS) {
+        Alert.alert('Check In', 'You must be within 100m of the office.');
+        return;
+      }
+
+      // Apply accuracy-aware boundary check: distance + accuracy <= 100m
+      if (
+        !isConservativelyInsideGeofence(
+          freshDistance,
+          freshLocation.accuracy,
+          GEOFENCE_RADIUS,
+        )
+      ) {
+        Alert.alert(
+          'Check In',
+          'Location accuracy is too low.\nPlease move to an open area and try again.',
+        );
+        return;
+      }
+
+      // Guard duplicate check-in
+      if (hasCheckedInToday(todayStr)) {
+        Alert.alert('Check In', 'You have already checked in today.');
+        return;
+      }
+
+      const newRecord: AttendanceRecord = {
+        id: Date.now().toString(),
+        date: todayStr,
+        checkInTime: formatCheckInTime(new Date()),
+        latitude: freshLocation.latitude,
+        longitude: freshLocation.longitude,
+        accuracy: freshLocation.accuracy,
+        distanceFromOffice: freshDistance,
+        status: 'checked_in',
+      };
+
+      addAttendance(newRecord);
+    } catch (checkInError: any) {
+      if (checkInError === 'permission_denied') {
+        Alert.alert(
+          'Check In',
+          'Location permission is required to check in.',
+        );
+      } else if (checkInError === 'position_unavailable') {
+        Alert.alert(
+          'Check In',
+          'Your location is currently unavailable.\nPlease enable GPS and try again.',
+        );
+      } else if (checkInError === 'timeout') {
+        Alert.alert(
+          'Check In',
+          'Unable to get your location.\nPlease move to an open area and try again.',
+        );
+      } else {
+        Alert.alert(
+          'Check In',
+          'Unable to get your location.\nPlease move to an open area and try again.',
+        );
+      }
+    } finally {
+      setIsCheckingIn(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <MainHeader />
 
+      {/* Offline Connectivity Banner */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Ionicons
+            name={IconNames.cloudOfflineFilled}
+            size={fontSize.f16}
+            color={ThemeColors.offlineText}
+            style={styles.offlineIcon}
+          />
+          <Text style={styles.offlineText}>
+            You are offline • Attendance will be saved locally
+          </Text>
+        </View>
+      )}
+
       <View style={styles.content}>
-        {/* Top Map Section */}
+        {/* Top Map Section: rendered using visually smoothed stableLocation */}
         <AttendanceMap
-          userLocation={location}
+          userLocation={stableLocation}
           isInside={isInside}
           style={styles.mapSection}
         />
@@ -92,7 +240,9 @@ export default function HomeScreen() {
           {/* Office Header */}
           <View style={styles.officeHeader}>
             <Text style={styles.officeTitle}>Office</Text>
-            <Text style={styles.officeSubtitle}>(100 m radius)</Text>
+            <Text style={styles.officeSubtitle}>
+              ({GEOFENCE_RADIUS} m radius)
+            </Text>
           </View>
 
           {/* Distance Row */}
@@ -100,22 +250,46 @@ export default function HomeScreen() {
             <View style={styles.distanceLeft}>
               <Text style={styles.distanceLabel}>Distance from office</Text>
               <Text style={styles.distanceValue}>
-                {formatDistance(distance)}
+                {status === 'error' ? '-- m' : formatDistance(distance)}
               </Text>
             </View>
             <View
               style={[
                 styles.statusBadge,
-                isInside ? styles.badgeInside : styles.badgeOutside,
+                isFetchingLocation
+                  ? styles.badgeLocating
+                  : status === 'error'
+                  ? styles.badgeOutside
+                  : !isAccurate
+                  ? styles.badgeWeakGps
+                  : isInside
+                  ? styles.badgeInside
+                  : styles.badgeOutside,
               ]}
             >
               <Text
                 style={[
                   styles.badgeText,
-                  isInside ? styles.badgeTextInside : styles.badgeTextOutside,
+                  isFetchingLocation
+                    ? styles.badgeTextLocating
+                    : status === 'error'
+                    ? styles.badgeTextOutside
+                    : !isAccurate
+                    ? styles.badgeTextWeakGps
+                    : isInside
+                    ? styles.badgeTextInside
+                    : styles.badgeTextOutside,
                 ]}
               >
-                {isInside ? 'Inside Office' : 'Outside Office'}
+                {isFetchingLocation
+                  ? 'Locating...'
+                  : status === 'error'
+                  ? 'GPS Off'
+                  : !isAccurate
+                  ? 'Weak GPS'
+                  : isInside
+                  ? 'Inside Office'
+                  : 'Outside Office'}
               </Text>
             </View>
           </View>
@@ -135,6 +309,61 @@ export default function HomeScreen() {
                 </Text>
                 <Text style={styles.alertSubtitleSuccess}>
                   Today at {todayRecord.checkInTime}
+                </Text>
+              </View>
+            </View>
+          ) : isFetchingLocation ? (
+            <View style={[styles.alertBanner, styles.alertBannerLocating]}>
+              <ActivityIndicator
+                size="small"
+                color={ThemeColors.primary}
+                style={styles.alertIcon}
+              />
+              <View style={styles.alertTextGroup}>
+                <Text style={styles.alertTitleLocating}>Locating...</Text>
+                <Text style={styles.alertSubtitleLocating}>
+                  Fetching your current location. Please wait...
+                </Text>
+              </View>
+            </View>
+          ) : status === 'error' && error ? (
+            <View style={[styles.alertBanner, styles.alertBannerDanger]}>
+              <Ionicons
+                name={IconNames.alertCircleFilled}
+                size={fontSize.f24}
+                color={ThemeColors.danger}
+                style={styles.alertIcon}
+              />
+              <View style={styles.alertTextGroup}>
+                <Text style={styles.alertTitleDanger}>
+                  {error === 'position_unavailable'
+                    ? 'Location Services Disabled'
+                    : error === 'permission_denied'
+                    ? 'Permission Denied'
+                    : 'Location Error'}
+                </Text>
+                <Text style={styles.alertSubtitleDanger}>
+                  {error === 'position_unavailable'
+                    ? 'GPS is turned off. Please turn on Location in your notification bar or device settings.'
+                    : getErrorMessage(error)}
+                </Text>
+              </View>
+            </View>
+          ) : !isAccurate && location ? (
+            <View style={[styles.alertBanner, styles.alertBannerWarning]}>
+              <Ionicons
+                name={IconNames.alertCircleFilled}
+                size={fontSize.f24}
+                color={ThemeColors.warning}
+                style={styles.alertIcon}
+              />
+              <View style={styles.alertTextGroup}>
+                <Text style={styles.alertTitleWarning}>
+                  Low GPS Accuracy (±{Math.round(location.accuracy)}m)
+                </Text>
+                <Text style={styles.alertSubtitleWarning}>
+                  Using cell tower indoors. Move near a window or outdoors to
+                  get satellite GPS lock.
                 </Text>
               </View>
             </View>
@@ -170,17 +399,35 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[
               styles.actionButton,
-              hasCheckedIn || !isInside
+              hasCheckedIn ||
+              isCheckingIn ||
+              isFetchingLocation ||
+              (!isInside && status !== 'error')
                 ? styles.actionButtonDisabled
                 : styles.actionButtonActive,
             ]}
-            disabled={hasCheckedIn || !isInside}
+            disabled={
+              hasCheckedIn ||
+              isCheckingIn ||
+              isFetchingLocation ||
+              (!isInside && status !== 'error')
+            }
             activeOpacity={0.85}
-            onPress={handleCheckIn}
+            onPress={status === 'error' ? retry : handleCheckIn}
           >
-            <Text style={styles.actionButtonText}>
-              {hasCheckedIn ? 'Checked In' : 'Check In'}
-            </Text>
+            {isCheckingIn ? (
+              <ActivityIndicator size="small" color={ThemeColors.white} />
+            ) : (
+              <Text style={styles.actionButtonText}>
+                {hasCheckedIn
+                  ? 'Checked In'
+                  : status === 'error'
+                  ? 'Enable GPS / Retry'
+                  : isFetchingLocation
+                  ? 'Locating...'
+                  : 'Check In'}
+              </Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -262,6 +509,12 @@ const styles = StyleSheet.create({
   badgeOutside: {
     backgroundColor: ThemeColors.outsideAlertBackground,
   },
+  badgeLocating: {
+    backgroundColor: ThemeColors.badgeLocating,
+  },
+  badgeWeakGps: {
+    backgroundColor: ThemeColors.badgeWeakGps,
+  },
   badgeText: {
     fontSize: fontSize.f12,
     fontFamily: fontFamily.semiBold,
@@ -271,6 +524,12 @@ const styles = StyleSheet.create({
   },
   badgeTextOutside: {
     color: ThemeColors.danger,
+  },
+  badgeTextLocating: {
+    color: ThemeColors.badgeTextLocating,
+  },
+  badgeTextWeakGps: {
+    color: ThemeColors.badgeTextWeakGps,
   },
   alertBanner: {
     flexDirection: 'row',
@@ -289,6 +548,14 @@ const styles = StyleSheet.create({
     backgroundColor: ThemeColors.outsideAlertBackground,
     borderColor: ThemeColors.outsideAlertBorder,
   },
+  alertBannerLocating: {
+    backgroundColor: ThemeColors.locatingAlertBackground,
+    borderColor: ThemeColors.locatingAlertBorder,
+  },
+  alertBannerWarning: {
+    backgroundColor: ThemeColors.weakGpsBackground,
+    borderColor: ThemeColors.weakGpsBorder,
+  },
   alertIcon: {
     marginRight: wp('3%'),
   },
@@ -304,6 +571,55 @@ const styles = StyleSheet.create({
     fontSize: fontSize.f12,
     fontFamily: fontFamily.regular,
     color: ThemeColors.insideAlertText,
+    marginTop: hp('0.2%'),
+  },
+  alertTitleWarning: {
+    fontSize: fontSize.f14,
+    fontFamily: fontFamily.bold,
+    color: ThemeColors.weakGpsText,
+  },
+  alertSubtitleWarning: {
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.regular,
+    color: ThemeColors.weakGpsText,
+    marginTop: hp('0.2%'),
+  },
+  offlineBanner: {
+    backgroundColor: ThemeColors.offlineBackground,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: hp('0.8%'),
+    paddingHorizontal: wp('4%'),
+  },
+  offlineIcon: {
+    marginRight: wp('2%'),
+  },
+  offlineText: {
+    color: ThemeColors.offlineText,
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.medium,
+  },
+  alertTitleDanger: {
+    fontSize: fontSize.f14,
+    fontFamily: fontFamily.bold,
+    color: ThemeColors.outsideAlertText,
+  },
+  alertSubtitleDanger: {
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.regular,
+    color: ThemeColors.outsideAlertText,
+    marginTop: hp('0.2%'),
+  },
+  alertTitleLocating: {
+    fontSize: fontSize.f14,
+    fontFamily: fontFamily.bold,
+    color: ThemeColors.locatingAlertText,
+  },
+  alertSubtitleLocating: {
+    fontSize: fontSize.f12,
+    fontFamily: fontFamily.regular,
+    color: ThemeColors.locatingAlertText,
     marginTop: hp('0.2%'),
   },
   alertMessageSuccess: {
@@ -338,3 +654,4 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.semiBold,
   },
 });
+

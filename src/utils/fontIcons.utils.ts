@@ -81,6 +81,8 @@ export const IconNames = {
   alertCircleFilled: 'alert-circle',
   chevronBack: 'chevron-back',
   calendarOutline: 'calendar-outline',
+  cloudOffline: 'cloud-offline-outline',
+  cloudOfflineFilled: 'cloud-offline',
 } as const;
 
 export { Ionicons, MaterialDesignIcons, fontSize, fontFamily, typography };

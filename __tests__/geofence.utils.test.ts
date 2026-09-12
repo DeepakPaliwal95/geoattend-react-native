@@ -1,6 +1,8 @@
 import {
   calculateDistance,
+  calculateDistanceFromOffice,
   isInsideGeofence,
+  isConservativelyInsideGeofence,
 } from '../src/utils/geofence.utils';
 import { GEOFENCE_RADIUS } from '../src/constants/location';
 
@@ -55,3 +57,49 @@ describe('geofence.utils - isInsideGeofence', () => {
     expect(isInsideGeofence(NaN)).toBe(false);
   });
 });
+
+describe('geofence.utils - calculateDistanceFromOffice', () => {
+  it('returns 0 when coordinates match office coordinates exactly', () => {
+    expect(
+      calculateDistanceFromOffice({
+        latitude: 25.053778,
+        longitude: 73.889511,
+      }),
+    ).toBe(0);
+  });
+
+  it('returns NaN when coordinates are missing or invalid', () => {
+    expect(calculateDistanceFromOffice(null)).toBeNaN();
+    expect(calculateDistanceFromOffice(undefined)).toBeNaN();
+    expect(
+      calculateDistanceFromOffice({
+        latitude: NaN,
+        longitude: 73.889511,
+      }),
+    ).toBeNaN();
+  });
+});
+
+describe('geofence.utils - isConservativelyInsideGeofence', () => {
+  it('returns true when distance + accuracy <= 100m', () => {
+    // 70m + 10m = 80m <= 100m
+    expect(isConservativelyInsideGeofence(70, 10)).toBe(true);
+    // 95m + 5m = 100m <= 100m (boundary)
+    expect(isConservativelyInsideGeofence(95, 5)).toBe(true);
+  });
+
+  it('returns false when distance + accuracy > 100m', () => {
+    // 95m + 15m = 110m > 100m
+    expect(isConservativelyInsideGeofence(95, 15)).toBe(false);
+    // 99m + 30m = 129m > 100m
+    expect(isConservativelyInsideGeofence(99, 30)).toBe(false);
+  });
+
+  it('returns false when distance or accuracy is null/undefined/NaN', () => {
+    expect(isConservativelyInsideGeofence(null, 10)).toBe(false);
+    expect(isConservativelyInsideGeofence(50, null)).toBe(false);
+    expect(isConservativelyInsideGeofence(NaN, 10)).toBe(false);
+    expect(isConservativelyInsideGeofence(50, NaN)).toBe(false);
+  });
+});
+

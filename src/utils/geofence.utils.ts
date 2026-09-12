@@ -1,4 +1,4 @@
-import { GEOFENCE_RADIUS } from '../constants/location';
+import { OFFICE_LOCATION, GEOFENCE_RADIUS } from '../constants/location';
 
 /**
  * Calculates the great-circle distance between two geographic coordinates
@@ -47,6 +47,30 @@ export const calculateDistance = (
 };
 
 /**
+ * Calculates distance between a given location and the fixed OFFICE_LOCATION.
+ * Returns distance in meters, or NaN if location is invalid.
+ */
+export const calculateDistanceFromOffice = (
+  location?: { latitude: number; longitude: number } | null,
+): number => {
+  if (
+    !location ||
+    location.latitude === undefined ||
+    location.longitude === undefined ||
+    Number.isNaN(location.latitude) ||
+    Number.isNaN(location.longitude)
+  ) {
+    return NaN;
+  }
+  return calculateDistance(
+    location.latitude,
+    location.longitude,
+    OFFICE_LOCATION.latitude,
+    OFFICE_LOCATION.longitude,
+  );
+};
+
+/**
  * Checks if a distance falls within the geofence boundary.
  * Boundary is inclusive (distance <= radius).
  *
@@ -62,3 +86,30 @@ export const isInsideGeofence = (
   }
   return distance <= radius;
 };
+
+/**
+ * Conservative accuracy-aware geofence boundary check.
+ * Requires: distance + accuracy <= radius
+ *
+ * @param distance Distance from office in meters
+ * @param accuracy GPS accuracy in meters
+ * @param radius Geofence radius in meters (defaults to GEOFENCE_RADIUS)
+ */
+export const isConservativelyInsideGeofence = (
+  distance: number | null | undefined,
+  accuracy: number | null | undefined,
+  radius: number = GEOFENCE_RADIUS,
+): boolean => {
+  if (
+    distance === null ||
+    distance === undefined ||
+    Number.isNaN(distance) ||
+    accuracy === null ||
+    accuracy === undefined ||
+    Number.isNaN(accuracy)
+  ) {
+    return false;
+  }
+  return distance + accuracy <= radius;
+};
+

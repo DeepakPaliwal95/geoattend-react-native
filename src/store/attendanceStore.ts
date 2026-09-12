@@ -7,7 +7,7 @@ export interface AttendanceState {
   records: AttendanceRecord[];
   hasHydrated: boolean;
   addAttendance: (record: AttendanceRecord) => void;
-  hasCheckedInToday: () => boolean;
+  hasCheckedInToday: (date?: string) => boolean;
   getTodayRecord: () => AttendanceRecord | undefined;
   clearAttendance: () => void;
   setHasHydrated: (hasHydrated: boolean) => void;
@@ -29,14 +29,19 @@ export const useAttendanceStore = create<AttendanceState>()(
       },
 
       addAttendance: (record: AttendanceRecord) => {
+        // Prevent duplicate check-in record for the same calendar date
+        const exists = get().records.some(r => r.date === record.date);
+        if (exists) {
+          return;
+        }
         set(state => ({
           records: [record, ...state.records],
         }));
       },
 
-      hasCheckedInToday: () => {
-        const today = new Date().toISOString().split('T')[0];
-        return get().records.some(record => record.date === today);
+      hasCheckedInToday: (date?: string) => {
+        const targetDate = date || new Date().toISOString().split('T')[0];
+        return get().records.some(record => record.date === targetDate);
       },
 
       getTodayRecord: () => {

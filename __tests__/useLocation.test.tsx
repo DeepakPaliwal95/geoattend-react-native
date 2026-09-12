@@ -77,12 +77,13 @@ describe('useLocation hook', () => {
     expect(hookValue.status).toBe('starting');
     expect(locationUtils.startLocationTracking).toHaveBeenCalledTimes(1);
 
+    const now = Date.now();
     ReactTestRenderer.act(() => {
       successCb({
         latitude: 26.885142,
         longitude: 75.811562,
         accuracy: 10,
-        timestamp: 1700000000000,
+        timestamp: now,
       });
     });
 
@@ -91,10 +92,86 @@ describe('useLocation hook', () => {
       latitude: 26.885142,
       longitude: 75.811562,
       accuracy: 10,
-      timestamp: 1700000000000,
+      timestamp: now,
     });
     expect(hookValue.error).toBeNull();
   });
+
+  it('rejects stale location fixes older than 10 seconds', () => {
+    let successCb: (loc: locationUtils.LocationData) => void = () => {};
+    (locationUtils.startLocationTracking as jest.Mock).mockImplementation(
+      (onSuccess) => {
+        successCb = onSuccess;
+        return 101;
+      },
+    );
+
+    ReactTestRenderer.act(() => {
+      ReactTestRenderer.create(<TestComponent />);
+    });
+
+    ReactTestRenderer.act(() => {
+      hookValue.startTracking();
+    });
+
+    // 15 seconds ago (> 10s max age)
+    ReactTestRenderer.act(() => {
+      successCb({
+        latitude: 26.885142,
+        longitude: 75.811562,
+        accuracy: 10,
+        timestamp: Date.now() - 15000,
+      });
+    });
+
+    expect(hookValue.location).toBeNull();
+    expect(hookValue.status).toBe('starting');
+  });
+
+  it('rejects poor accuracy fixes (> 30 meters) and retains previous valid location', () => {
+    let successCb: (loc: locationUtils.LocationData) => void = () => {};
+    (locationUtils.startLocationTracking as jest.Mock).mockImplementation(
+      (onSuccess) => {
+        successCb = onSuccess;
+        return 101;
+      },
+    );
+
+    ReactTestRenderer.act(() => {
+      ReactTestRenderer.create(<TestComponent />);
+    });
+
+    ReactTestRenderer.act(() => {
+      hookValue.startTracking();
+    });
+
+    const validTime = Date.now();
+    ReactTestRenderer.act(() => {
+      successCb({
+        latitude: 26.885142,
+        longitude: 75.811562,
+        accuracy: 15,
+        timestamp: validTime,
+      });
+    });
+
+    expect(hookValue.location?.accuracy).toBe(15);
+
+    // Poor accuracy fix: 45m (> 30m)
+    ReactTestRenderer.act(() => {
+      successCb({
+        latitude: 26.999999,
+        longitude: 75.999999,
+        accuracy: 45,
+        timestamp: Date.now(),
+      });
+    });
+
+    // Previous valid location is retained, poor fix rejected
+    expect(hookValue.location?.accuracy).toBe(15);
+    expect(hookValue.location?.latitude).toBe(26.885142);
+  });
+
 
   it('prevents duplicate watchers when startTracking is called multiple times', () => {
     (locationUtils.startLocationTracking as jest.Mock).mockReturnValue(102);

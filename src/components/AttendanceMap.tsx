@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, Circle, UrlTile } from 'react-native-maps';
-import { LocationData } from '../utils/location.utils';
+import { LocationData, isValidLocation } from '../utils/location.utils';
 import { OFFICE_LOCATION, GEOFENCE_RADIUS } from '../constants/location';
 import { ThemeColors } from '../utils/theme.utils';
 import { Ionicons, IconNames, fontSize } from '../utils/fontIcons.utils';
@@ -21,9 +21,14 @@ export default function AttendanceMap({
   const mapRef = useRef<MapView>(null);
   const hasCenteredInitial = useRef(false);
 
-  // Center camera once when user location becomes available
+  // Center camera once when user location first becomes validly available
   useEffect(() => {
-    if (userLocation && !hasCenteredInitial.current && mapRef.current) {
+    if (
+      userLocation &&
+      isValidLocation(userLocation) &&
+      !hasCenteredInitial.current &&
+      mapRef.current
+    ) {
       hasCenteredInitial.current = true;
       mapRef.current.animateToRegion(
         {
@@ -44,6 +49,8 @@ export default function AttendanceMap({
   const circleFillColor = isInside
     ? ThemeColors.geofenceInsideFill
     : ThemeColors.geofenceOutsideFill;
+
+  const isUserLocationValid = userLocation && isValidLocation(userLocation);
 
   return (
     <View style={[styles.container, style]}>
@@ -79,6 +86,23 @@ export default function AttendanceMap({
           zIndex={2}
         />
 
+        {/* User GPS Accuracy Circle (visualizes location uncertainty) */}
+        {isUserLocationValid &&
+          userLocation.accuracy !== undefined &&
+          userLocation.accuracy > 0 && (
+            <Circle
+              center={{
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+              }}
+              radius={userLocation.accuracy}
+              strokeWidth={1}
+              strokeColor={ThemeColors.userAccuracyStroke}
+              fillColor={ThemeColors.userAccuracyFill}
+              zIndex={2}
+            />
+          )}
+
         {/* Fixed Office Marker */}
         <Marker
           coordinate={OFFICE_LOCATION}
@@ -98,31 +122,30 @@ export default function AttendanceMap({
           </View>
         </Marker>
 
-        {/* Live User Location Marker */}
-        {userLocation &&
-          userLocation.latitude !== undefined &&
-          userLocation.longitude !== undefined && (
-            <Marker
-              coordinate={{
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-              }}
-              anchor={{ x: 0.5, y: 0.5 }}
-              title="You"
-              tracksViewChanges={true}
-              zIndex={4}
-            >
-              <View style={styles.userMarkerContainer}>
-                <View style={styles.userMarkerOuterRing}>
-                  <View style={styles.userMarkerInnerDot} />
-                </View>
+        {/* Live User Location Marker - only rendered if valid coordinates exist */}
+        {isUserLocationValid && (
+          <Marker
+            coordinate={{
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+            }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            title="You"
+            tracksViewChanges={true}
+            zIndex={4}
+          >
+            <View style={styles.userMarkerContainer}>
+              <View style={styles.userMarkerOuterRing}>
+                <View style={styles.userMarkerInnerDot} />
               </View>
-            </Marker>
-          )}
+            </View>
+          </Marker>
+        )}
       </MapView>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

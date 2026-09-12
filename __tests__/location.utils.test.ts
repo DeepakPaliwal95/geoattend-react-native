@@ -1,5 +1,7 @@
 import {
   isValidLocation,
+  isFreshLocation,
+  isAcceptableAccuracy,
   mapNativeLocationError,
   getCurrentLocation,
   startLocationTracking,
@@ -64,12 +66,67 @@ describe('location.utils - isValidLocation', () => {
     ).toBe(false);
   });
 
+  it('returns false when latitude or longitude is outside valid bounds', () => {
+    expect(
+      isValidLocation({ latitude: 91, longitude: 75.811562, accuracy: 10 }),
+    ).toBe(false);
+    expect(
+      isValidLocation({ latitude: -91, longitude: 75.811562, accuracy: 10 }),
+    ).toBe(false);
+    expect(
+      isValidLocation({ latitude: 26.885142, longitude: 181, accuracy: 10 }),
+    ).toBe(false);
+    expect(
+      isValidLocation({ latitude: 26.885142, longitude: -181, accuracy: 10 }),
+    ).toBe(false);
+  });
+
   it('returns false when accuracy is negative', () => {
     expect(
       isValidLocation({ latitude: 26.885142, longitude: 75.811562, accuracy: -5 }),
     ).toBe(false);
   });
 });
+
+describe('location.utils - isFreshLocation', () => {
+  it('returns true when timestamp is within 10 seconds', () => {
+    expect(isFreshLocation(Date.now())).toBe(true);
+    expect(isFreshLocation(Date.now() - 3000)).toBe(true);
+    expect(isFreshLocation(Date.now() - 10000)).toBe(true);
+  });
+
+  it('returns false when timestamp is older than 10 seconds', () => {
+    expect(isFreshLocation(Date.now() - 10001)).toBe(false);
+    expect(isFreshLocation(Date.now() - 60000)).toBe(false);
+  });
+
+  it('returns false when timestamp is null, undefined, or NaN', () => {
+    expect(isFreshLocation(null)).toBe(false);
+    expect(isFreshLocation(undefined)).toBe(false);
+    expect(isFreshLocation(NaN)).toBe(false);
+  });
+});
+
+describe('location.utils - isAcceptableAccuracy', () => {
+  it('returns true when accuracy is within threshold (<= 30m)', () => {
+    expect(isAcceptableAccuracy(5)).toBe(true);
+    expect(isAcceptableAccuracy(20)).toBe(true);
+    expect(isAcceptableAccuracy(30)).toBe(true);
+  });
+
+  it('returns false when accuracy exceeds threshold (> 30m)', () => {
+    expect(isAcceptableAccuracy(31)).toBe(false);
+    expect(isAcceptableAccuracy(45)).toBe(false);
+  });
+
+  it('returns false when accuracy is negative, null, undefined, or NaN', () => {
+    expect(isAcceptableAccuracy(-1)).toBe(false);
+    expect(isAcceptableAccuracy(null)).toBe(false);
+    expect(isAcceptableAccuracy(undefined)).toBe(false);
+    expect(isAcceptableAccuracy(NaN)).toBe(false);
+  });
+});
+
 
 describe('location.utils - mapNativeLocationError', () => {
   it('maps PERMISSION_DENIED to permission_denied', () => {

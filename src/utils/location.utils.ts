@@ -5,6 +5,13 @@ import Geolocation, {
   GeoWatchOptions,
   PositionError,
 } from 'react-native-geolocation-service';
+import {
+  MAX_ACCURACY_THRESHOLD_METERS,
+  MAX_LOCATION_AGE_MS,
+  LOCATION_DISTANCE_FILTER_METERS,
+  LOCATION_UPDATE_INTERVAL_MS,
+  LOCATION_FASTEST_INTERVAL_MS,
+} from '../constants/location';
 
 export interface LocationData {
   latitude: number;
@@ -22,28 +29,45 @@ export type LocationError =
   | 'unknown';
 
 export const DEFAULT_LOCATION_OPTIONS: GeoWatchOptions = {
+  accuracy: {
+    android: 'high',
+    ios: 'best',
+  },
   enableHighAccuracy: true,
-  distanceFilter: 0,
-  interval: 5000,
-  fastestInterval: 2000,
+  distanceFilter: LOCATION_DISTANCE_FILTER_METERS,
+  interval: LOCATION_UPDATE_INTERVAL_MS,
+  fastestInterval: LOCATION_FASTEST_INTERVAL_MS,
   showLocationDialog: true,
-  forceRequestLocation: false,
+  forceRequestLocation: true,
 };
 
 export const DEFAULT_CURRENT_OPTIONS: GeoOptions = {
+  accuracy: {
+    android: 'high',
+    ios: 'best',
+  },
   enableHighAccuracy: true,
-  timeout: 15000,
-  maximumAge: 10000,
+  timeout: 20000,
+  maximumAge: 0,
+  showLocationDialog: true,
+  forceRequestLocation: true,
 };
 
 /**
- * Validates that coordinates and accuracy are present, non-null, and non-NaN.
+ * Validates that coordinates and accuracy are present, non-null, non-NaN,
+ * and within standard geographic bounds.
+ *
+ * Latitude: -90 <= latitude <= 90
+ * Longitude: -180 <= longitude <= 180
+ * Accuracy: >= 0
  */
-export const isValidLocation = (coords?: {
-  latitude?: number;
-  longitude?: number;
-  accuracy?: number;
-} | null): boolean => {
+export const isValidLocation = (
+  coords?: {
+    latitude?: number;
+    longitude?: number;
+    accuracy?: number;
+  } | null,
+): boolean => {
   if (!coords) {
     return false;
   }
@@ -52,7 +76,9 @@ export const isValidLocation = (coords?: {
     latitude === undefined ||
     latitude === null ||
     typeof latitude !== 'number' ||
-    Number.isNaN(latitude)
+    Number.isNaN(latitude) ||
+    latitude < -90 ||
+    latitude > 90
   ) {
     return false;
   }
@@ -60,7 +86,9 @@ export const isValidLocation = (coords?: {
     longitude === undefined ||
     longitude === null ||
     typeof longitude !== 'number' ||
-    Number.isNaN(longitude)
+    Number.isNaN(longitude) ||
+    longitude < -180 ||
+    longitude > 180
   ) {
     return false;
   }
@@ -74,6 +102,47 @@ export const isValidLocation = (coords?: {
     return false;
   }
   return true;
+};
+
+/**
+ * Checks if a GPS fix timestamp is fresh (within maxAgeMs).
+ * Defaults to MAX_LOCATION_AGE_MS (10 seconds).
+ * Also tolerates up to 10 seconds of forward clock skew between device clock and GPS satellite clock.
+ */
+export const isFreshLocation = (
+  timestamp?: number | null,
+  maxAgeMs: number = MAX_LOCATION_AGE_MS,
+): boolean => {
+  if (
+    timestamp === undefined ||
+    timestamp === null ||
+    typeof timestamp !== 'number' ||
+    Number.isNaN(timestamp)
+  ) {
+    return false;
+  }
+  const age = Date.now() - timestamp;
+  return age >= -10000 && age <= maxAgeMs;
+};
+
+/**
+ * Validates if the GPS accuracy is acceptable.
+ * Threshold defaults to MAX_ACCURACY_THRESHOLD_METERS (30 meters).
+ */
+export const isAcceptableAccuracy = (
+  accuracy?: number | null,
+  maxAccuracyMeters: number = MAX_ACCURACY_THRESHOLD_METERS,
+): boolean => {
+  if (
+    accuracy === undefined ||
+    accuracy === null ||
+    typeof accuracy !== 'number' ||
+    Number.isNaN(accuracy) ||
+    accuracy < 0
+  ) {
+    return false;
+  }
+  return accuracy <= maxAccuracyMeters;
 };
 
 /**
@@ -99,6 +168,7 @@ export const mapNativeLocationError = (error: GeoError): LocationError => {
 
 /**
  * One-time fetch of current location coordinates.
+ * Defaults to maximumAge: 0 to ensure a fresh GPS fix.
  */
 export const getCurrentLocation = (
   options: GeoOptions = DEFAULT_CURRENT_OPTIONS,
@@ -106,6 +176,7 @@ export const getCurrentLocation = (
   return new Promise((resolve, reject) => {
     Geolocation.getCurrentPosition(
       (position: GeoPosition) => {
+        console.log('current position---->', position);
         if (!isValidLocation(position?.coords)) {
           reject(new Error('Invalid location coordinates received'));
           return;

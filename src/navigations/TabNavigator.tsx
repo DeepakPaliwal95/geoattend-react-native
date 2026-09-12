@@ -10,6 +10,7 @@ import {
   fontSize,
 } from '../utils/fontIcons.utils';
 import { ThemeColors } from '../utils/theme.utils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator<TBottomTabStack>();
 
@@ -46,6 +47,7 @@ const renderHistoryIcon = ({
 );
 
 export default function TabNavigator() {
+  const { bottom } = useSafeAreaInsets();
   return (
     <SafeAreaWrapper>
       <Tab.Navigator
@@ -59,6 +61,8 @@ export default function TabNavigator() {
           },
           tabBarStyle: {
             shadowColor: 'transparent',
+            height: 60 + bottom,
+            paddingBottom: bottom + 10,
           },
           tabBarItemStyle: {
             paddingVertical: 5,
