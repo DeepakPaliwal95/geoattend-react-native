@@ -36,6 +36,7 @@ local.properties
 .kotlin/
 
 android/local.properties
+.agent/
 
 # node.js
 #
