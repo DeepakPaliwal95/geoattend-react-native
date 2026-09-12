@@ -2,8 +2,8 @@
  * Fixed office location provided for the technical assignment.
  */
 export const OFFICE_LOCATION = {
-  latitude: 25.053778, //26.58333
-  longitude: 73.889511, //73.83333
+  latitude: 26.58333,
+  longitude: 73.83333,
 };
 
 /**
