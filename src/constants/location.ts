@@ -1,10 +1,5 @@
 /**
  * Fixed office location provided for the technical assignment.
- *
- * Single source of truth for:
- * - Map
- * - Geofence
- * - Attendance validation
  */
 export const OFFICE_LOCATION = {
   latitude: 25.053778, //26.58333
@@ -18,12 +13,6 @@ export const GEOFENCE_RADIUS = 100;
 
 /**
  * Maximum acceptable GPS accuracy.
- *
- * Example:
- * 10m -> accepted
- * 20m -> accepted
- * 30m -> accepted
- * 35m -> rejected
  */
 export const MAX_ACCURACY_THRESHOLD_METERS = 30;
 

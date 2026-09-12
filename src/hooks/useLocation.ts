@@ -14,6 +14,8 @@ import {
 } from '../utils/location.utils';
 import { usePermission } from './usePermission';
 
+declare const process: any;
+
 export interface UseLocationReturn {
   location: LocationData | null;
   status: LocationStatus;
@@ -166,8 +168,12 @@ export const useLocation = (): UseLocationReturn => {
 
   // Auto-recovery polling when Location is turned off from notification bar
   useEffect(() => {
+    const isTestEnv =
+      typeof process !== 'undefined' &&
+      (process as { env?: { NODE_ENV?: string } })?.env?.NODE_ENV === 'test';
+
     if (
-      process.env.NODE_ENV === 'test' ||
+      isTestEnv ||
       status !== 'error' ||
       error !== 'position_unavailable' ||
       permissionState !== 'granted'

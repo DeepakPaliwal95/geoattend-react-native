@@ -1,53 +1,66 @@
+/**
+ * Centralized Design System Palette & Theme Tokens
+ *
+ * Single source of truth for all application styling.
+ * Organized by core semantics and color families (green, red, blue, amber, slate, neutrals)
+ * with reusable surface (S1, S2), border, and dark text shades.
+ */
 export const ThemeColors = {
-  // Brand & Palette from Design System
+  // Brand & Core Semantics
   primary: '#2563EB',
   secondary: '#3B82F6',
-  success: '#10B981',
-  danger: '#EF4444',
-  warning: '#F59E0B',
+  background: '#F8FAFC',
+  cardBackground: '#FFFFFF',
+  border: '#E2E8F0',
   textPrimary: '#0F172A',
   textSecondary: '#64748B',
-  background: '#F8FAFC',
-  border: '#E2E8F0',
-
-  // Screen & Component tokens
-  backgroundColor: '#F8FAFC',
-  text: '#0F172A',
-  textS1: '#333333',
-  textS2: '#64748B',
-  borderColor: '#E2E8F0',
-  placeHolderColor: '#8D8D8D',
-  cardBackground: '#FFFFFF',
-  iconContainerBackground: '#EFF6FF',
   disabled: '#94A3B8',
-  satelliteIcon: '#475569',
+  disabledBackground: '#CBD5E1',
 
-  // Alert & Badge tokens
-  outsideAlertBackground: '#FEE2E2',
-  outsideAlertBorder: '#FECACA',
-  outsideAlertText: '#991B1B',
-  insideAlertBackground: '#ECFDF5',
-  insideAlertBorder: '#A7F3D0',
-  insideAlertText: '#065F46',
-  locatingAlertBackground: '#EFF6FF',
-  locatingAlertBorder: '#BFDBFE',
-  locatingAlertText: '#1E40AF',
-  badgeLocating: '#DBEAFE',
-  badgeTextLocating: '#1D4ED8',
-  badgeWeakGps: '#FEF3C7',
-  badgeTextWeakGps: '#D97706',
-  weakGpsBackground: '#FEF3C7',
-  weakGpsBorder: '#FDE68A',
-  weakGpsText: '#92400E',
-  offlineBackground: '#1E293B',
-  offlineBorder: '#334155',
-  offlineText: '#F8FAFC',
-  badgeOffline: '#F1F5F9',
-  badgeTextOffline: '#64748B',
-  buttonDisabled: '#CBD5E1',
-  buttonDisabledText: '#94A3B8',
+  // Green Family (Success, Inside Geofence, Active)
+  green: '#10B981',
+  greenDark: '#065F46',
+  greenBorder: '#A7F3D0',
+  greenS1: '#ECFDF5',
+  greenS2: '#DCFCE7',
 
-  // Geofence Map tokens
+  // Red Family (Danger, Outside Geofence, Error)
+  red: '#EF4444',
+  redDark: '#991B1B',
+  redBorder: '#FECACA',
+  redS1: '#FEE2E2',
+
+  // Blue Family (Info, Locating, Active Highlights)
+  blue: '#2563EB',
+  blueDark: '#1E40AF',
+  blueText: '#1D4ED8',
+  blueBorder: '#BFDBFE',
+  blueS1: '#EFF6FF',
+  blueS2: '#DBEAFE',
+
+  // Amber Family (Warning, Weak GPS, Stale Fix)
+  amber: '#F59E0B',
+  amberDark: '#92400E',
+  amberText: '#D97706',
+  amberBorder: '#FDE68A',
+  amberS1: '#FEF3C7',
+
+  // Slate Family (Dark Neutral, Offline Banner, Muted Icons)
+  slateDark: '#1E293B',
+  slateBorder: '#334155',
+  slateMuted: '#475569',
+  slateLight: '#F1F5F9',
+
+  // Grayscale & Basics
+  white: '#FFFFFF',
+  black: '#000000',
+  gray: '#8D8D8D',
+  grayS1: '#C8C8C8',
+  grayS2: '#E5E5E5',
+  grayS3: '#F9F9FB',
+  transparent: 'transparent',
+
+  // Map Alpha Overlays
   geofenceInsideStroke: '#10B981',
   geofenceInsideFill: 'rgba(16, 185, 129, 0.15)',
   geofenceOutsideStroke: '#3B82F6',
@@ -56,18 +69,9 @@ export const ThemeColors = {
   userAccuracyStroke: 'rgba(59, 130, 246, 0.35)',
   userAccuracyFill: 'rgba(59, 130, 246, 0.08)',
 
-  // Utility colors
-  white: '#FFFFFF',
-  black: '#000000',
-  red: '#EF4444',
-  redS1: '#FEE2E2',
-  gray: '#8D8D8D',
-  grayS1: '#C8C8C8',
-  grayS2: '#E5E5E5',
-  grayS3: '#F9F9FB',
-  green: '#10B981',
-  greenS1: '#ECFDF5',
-  greenS2: '#DCFCE7',
-  lightOrange: '#FFA432',
-  transparent: 'transparent',
+  // Semantic Aliases
+  success: '#10B981',
+  danger: '#EF4444',
+  warning: '#F59E0B',
 };
+

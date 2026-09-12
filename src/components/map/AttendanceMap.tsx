@@ -1,11 +1,11 @@
 import React, { useRef, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, Circle, UrlTile } from 'react-native-maps';
-import { LocationData, isValidLocation } from '../utils/location.utils';
-import { OFFICE_LOCATION, GEOFENCE_RADIUS } from '../constants/location';
-import { ThemeColors } from '../utils/theme.utils';
-import { Ionicons, IconNames, fontSize } from '../utils/fontIcons.utils';
-import { wp } from '../utils/responsive.utils';
+import { LocationData, isValidLocation } from '../../utils/location.utils';
+import { OFFICE_LOCATION, GEOFENCE_RADIUS } from '../../constants/location';
+import { ThemeColors } from '../../utils/theme.utils';
+import { Ionicons, IconNames, fontSize } from '../../utils/fontIcons.utils';
+import { wp } from '../../utils/responsive.utils';
 
 interface AttendanceMapProps {
   userLocation: LocationData | null;

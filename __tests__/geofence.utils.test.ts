@@ -4,7 +4,7 @@ import {
   isInsideGeofence,
   isConservativelyInsideGeofence,
 } from '../src/utils/geofence.utils';
-import { GEOFENCE_RADIUS } from '../src/constants/location';
+import { GEOFENCE_RADIUS, OFFICE_LOCATION } from '../src/constants/location';
 
 describe('geofence.utils - calculateDistance', () => {
   it('returns 0 when coordinates are identical', () => {
@@ -62,8 +62,8 @@ describe('geofence.utils - calculateDistanceFromOffice', () => {
   it('returns 0 when coordinates match office coordinates exactly', () => {
     expect(
       calculateDistanceFromOffice({
-        latitude: 25.053778,
-        longitude: 73.889511,
+        latitude: OFFICE_LOCATION.latitude,
+        longitude: OFFICE_LOCATION.longitude,
       }),
     ).toBe(0);
   });

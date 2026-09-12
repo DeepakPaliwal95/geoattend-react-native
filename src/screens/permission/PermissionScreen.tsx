@@ -74,7 +74,7 @@ export default function PermissionScreen() {
                 <MaterialDesignIcons
                   name={IconNames.satelliteVariant}
                   size={fontSize.f36 * 1.8}
-                  color={ThemeColors.satelliteIcon}
+                  color={ThemeColors.slateMuted}
                 />
               </View>
               <View style={styles.disabledBadge}>
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: wp('19%'),
-    backgroundColor: ThemeColors.iconContainerBackground,
+    backgroundColor: ThemeColors.blueS1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     width: wp('12%'),
     height: wp('12%'),
     borderRadius: wp('6%'),
-    backgroundColor: ThemeColors.iconContainerBackground,
+    backgroundColor: ThemeColors.blueS1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     width: wp('8.5%'),
     height: wp('8.5%'),
     borderRadius: wp('4.25%'),
-    backgroundColor: ThemeColors.iconContainerBackground,
+    backgroundColor: ThemeColors.blueS1,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: wp('3.5%'),
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: hp('6%'),
     minHeight: 48,
-    backgroundColor: ThemeColors.iconContainerBackground,
+    backgroundColor: ThemeColors.blueS1,
     borderRadius: wp('3%'),
     justifyContent: 'center',
     alignItems: 'center',

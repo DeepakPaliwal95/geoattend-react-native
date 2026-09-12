@@ -213,7 +213,7 @@ export default function HomeScreen() {
           <Ionicons
             name={IconNames.cloudOfflineFilled}
             size={fontSize.f16}
-            color={ThemeColors.offlineText}
+            color={ThemeColors.background}
             style={styles.offlineIcon}
           />
           <Text style={styles.offlineText}>
@@ -507,13 +507,13 @@ const styles = StyleSheet.create({
     backgroundColor: ThemeColors.greenS2,
   },
   badgeOutside: {
-    backgroundColor: ThemeColors.outsideAlertBackground,
+    backgroundColor: ThemeColors.redS1,
   },
   badgeLocating: {
-    backgroundColor: ThemeColors.badgeLocating,
+    backgroundColor: ThemeColors.blueS2,
   },
   badgeWeakGps: {
-    backgroundColor: ThemeColors.badgeWeakGps,
+    backgroundColor: ThemeColors.amberS1,
   },
   badgeText: {
     fontSize: fontSize.f12,
@@ -526,10 +526,10 @@ const styles = StyleSheet.create({
     color: ThemeColors.danger,
   },
   badgeTextLocating: {
-    color: ThemeColors.badgeTextLocating,
+    color: ThemeColors.blueText,
   },
   badgeTextWeakGps: {
-    color: ThemeColors.badgeTextWeakGps,
+    color: ThemeColors.amberText,
   },
   alertBanner: {
     flexDirection: 'row',
@@ -541,20 +541,20 @@ const styles = StyleSheet.create({
     marginBottom: hp('2.5%'),
   },
   alertBannerSuccess: {
-    backgroundColor: ThemeColors.insideAlertBackground,
-    borderColor: ThemeColors.insideAlertBorder,
+    backgroundColor: ThemeColors.greenS1,
+    borderColor: ThemeColors.greenBorder,
   },
   alertBannerDanger: {
-    backgroundColor: ThemeColors.outsideAlertBackground,
-    borderColor: ThemeColors.outsideAlertBorder,
+    backgroundColor: ThemeColors.redS1,
+    borderColor: ThemeColors.redBorder,
   },
   alertBannerLocating: {
-    backgroundColor: ThemeColors.locatingAlertBackground,
-    borderColor: ThemeColors.locatingAlertBorder,
+    backgroundColor: ThemeColors.blueS1,
+    borderColor: ThemeColors.blueBorder,
   },
   alertBannerWarning: {
-    backgroundColor: ThemeColors.weakGpsBackground,
-    borderColor: ThemeColors.weakGpsBorder,
+    backgroundColor: ThemeColors.amberS1,
+    borderColor: ThemeColors.amberBorder,
   },
   alertIcon: {
     marginRight: wp('3%'),
@@ -565,27 +565,27 @@ const styles = StyleSheet.create({
   alertTitleSuccess: {
     fontSize: fontSize.f14,
     fontFamily: fontFamily.bold,
-    color: ThemeColors.insideAlertText,
+    color: ThemeColors.greenDark,
   },
   alertSubtitleSuccess: {
     fontSize: fontSize.f12,
     fontFamily: fontFamily.regular,
-    color: ThemeColors.insideAlertText,
+    color: ThemeColors.greenDark,
     marginTop: hp('0.2%'),
   },
   alertTitleWarning: {
     fontSize: fontSize.f14,
     fontFamily: fontFamily.bold,
-    color: ThemeColors.weakGpsText,
+    color: ThemeColors.amberDark,
   },
   alertSubtitleWarning: {
     fontSize: fontSize.f12,
     fontFamily: fontFamily.regular,
-    color: ThemeColors.weakGpsText,
+    color: ThemeColors.amberDark,
     marginTop: hp('0.2%'),
   },
   offlineBanner: {
-    backgroundColor: ThemeColors.offlineBackground,
+    backgroundColor: ThemeColors.slateDark,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -596,44 +596,44 @@ const styles = StyleSheet.create({
     marginRight: wp('2%'),
   },
   offlineText: {
-    color: ThemeColors.offlineText,
+    color: ThemeColors.background,
     fontSize: fontSize.f12,
     fontFamily: fontFamily.medium,
   },
   alertTitleDanger: {
     fontSize: fontSize.f14,
     fontFamily: fontFamily.bold,
-    color: ThemeColors.outsideAlertText,
+    color: ThemeColors.redDark,
   },
   alertSubtitleDanger: {
     fontSize: fontSize.f12,
     fontFamily: fontFamily.regular,
-    color: ThemeColors.outsideAlertText,
+    color: ThemeColors.redDark,
     marginTop: hp('0.2%'),
   },
   alertTitleLocating: {
     fontSize: fontSize.f14,
     fontFamily: fontFamily.bold,
-    color: ThemeColors.locatingAlertText,
+    color: ThemeColors.blueDark,
   },
   alertSubtitleLocating: {
     fontSize: fontSize.f12,
     fontFamily: fontFamily.regular,
-    color: ThemeColors.locatingAlertText,
+    color: ThemeColors.blueDark,
     marginTop: hp('0.2%'),
   },
   alertMessageSuccess: {
     flex: 1,
     fontSize: fontSize.f12,
     fontFamily: fontFamily.medium,
-    color: ThemeColors.insideAlertText,
+    color: ThemeColors.greenDark,
     lineHeight: 18,
   },
   alertMessageDanger: {
     flex: 1,
     fontSize: fontSize.f12,
     fontFamily: fontFamily.medium,
-    color: ThemeColors.outsideAlertText,
+    color: ThemeColors.redDark,
     lineHeight: 18,
   },
   actionButton: {
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
     backgroundColor: ThemeColors.primary,
   },
   actionButtonDisabled: {
-    backgroundColor: ThemeColors.buttonDisabled,
+    backgroundColor: ThemeColors.disabledBackground,
   },
   actionButtonText: {
     color: ThemeColors.white,
